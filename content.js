@@ -88,6 +88,22 @@ function scanForFiles() {
     const href = anchor.href;
     if (seen.has(href) || shouldSkip(href)) return;
 
+    // ── Folder (mod_folder) ──
+    // Links to /mod/folder/view.php?id=XXX — contains multiple files inside
+    // Background will fetch the folder page and expand the files
+    if (href.includes('/mod/folder/view.php')) {
+      seen.add(href);
+      found.push({
+        url: href,
+        name: getLinkLabel(anchor),
+        ext: 'folder',
+        cat: 'folder',
+        label: '📁',
+        folder: true,    // flag: needs background expansion
+      });
+      return;
+    }
+
     // ── H5P / interactive video (mod_hvp) ──
     // These link to /mod/hvp/view.php?id=XXX
     // We can't know the real video URL yet — mark as 'hvp' pending type

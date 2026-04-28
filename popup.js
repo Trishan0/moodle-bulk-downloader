@@ -10,11 +10,12 @@ let isDownloading = false;
 
 // ── Categories ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
-  { id:'all',   label:'All',    icon:'📦' },
-  { id:'docs',  label:'Docs',   icon:'📄' },
-  { id:'video', label:'Videos', icon:'🎬' },
-  { id:'audio', label:'Audio',  icon:'🎵' },
-  { id:'image', label:'Images', icon:'🖼️' },
+  { id:'all',    label:'All',    icon:'📦' },
+  { id:'docs',   label:'Docs',   icon:'📄' },
+  { id:'video',  label:'Videos', icon:'🎬' },
+  { id:'audio',  label:'Audio',  icon:'🎵' },
+  { id:'image',  label:'Images', icon:'🖼️' },
+  { id:'folder', label:'Folders',icon:'📁' },
 ];
 
 // ── Badge colours ─────────────────────────────────────────────────────────────
@@ -28,8 +29,9 @@ const EXT_STYLE = {
   mp4:  {bg:'#1f1a3a',color:'#a78bfa'},
   mp3:  {bg:'#1a2535',color:'#67e8f9'},
   img:  {bg:'#2a1a1a',color:'#fca5a5'},
-  file: {bg:'#1e2535',color:'#9ca3af'},
-  hvp:  {bg:'#1f2a1a',color:'#86d97a'},   // H5P interactive — pending resolve
+  file:   {bg:'#1e2535',color:'#9ca3af'},
+  hvp:    {bg:'#1f2a1a',color:'#86d97a'},
+  folder: {bg:'#1a2535',color:'#9ca3af'},  // placeholder shown while resolving
 };
 const badgeStyle = ext => { const s=EXT_STYLE[ext]||EXT_STYLE.file; return `background:${s.bg};color:${s.color}`; };
 
@@ -89,14 +91,18 @@ function renderFileList() {
   list.innerHTML = files.map(f => {
     const idx      = src.indexOf(f);
     const selected = selectedIds.has(idx);
-    const display  = f.resolvedName || f.name || 'Unnamed';
-    const dimmed   = !f.resolvedName && resolvedFiles.length === 0 ? 'resolving' : '';
-    const badgeExt = f.hvp && !f.hvpResolved ? 'hvp' : f.ext;
-    const badgeLabel = f.hvp && !f.hvpResolved ? 'H5P…' : (f.label || f.ext.toUpperCase());
+    const display    = f.resolvedName || f.name || 'Unnamed';
+    const dimmed     = !f.resolvedName && resolvedFiles.length === 0 ? 'resolving' : '';
+    const badgeExt   = f.hvp && !f.hvpResolved ? 'hvp' : (f.folder ? 'folder' : f.ext);
+    const badgeLabel = f.hvp && !f.hvpResolved ? 'H5P…' : (f.folder ? '📁…' : (f.label || f.ext.toUpperCase()));
+    const folderTag  = f.folderName
+      ? `<span style="font-size:9px;color:#4b5a7a;margin-left:4px;flex-shrink:0" title="From folder: ${f.folderName}">📁 ${f.folderName.slice(0,22)}</span>`
+      : '';
     return `<div class="file-item ${selected?'selected':''}" data-idx="${idx}">
       <div class="file-checkbox">${selected?'✓':''}</div>
       <span class="ext-badge" style="${badgeStyle(badgeExt)}">${badgeLabel}</span>
-      <span class="file-name ${dimmed}" title="${display}">${display}</span>
+      <span class="file-name ${dimmed}" title="${display}" style="min-width:0">${display}</span>
+      ${folderTag}
     </div>`;
   }).join('');
 
@@ -291,16 +297,18 @@ async function resolveFilenames(files) {
   const bannerText = document.getElementById('resolvingText');
   banner.style.display = 'flex';
 
-  const hvpCount = files.filter(f => f.hvp).length;
+  const hvpCount    = files.filter(f => f.hvp).length;
+  const folderCount = files.filter(f => f.folder).length;
 
   return new Promise(resolve => {
     let tick = 0;
     const interval = setInterval(() => {
       tick = Math.min(tick + 1, files.length - 1);
-      const msg = hvpCount > 0
-        ? `Resolving files + ${hvpCount} interactive video${hvpCount > 1 ? 's' : ''}… (${tick}/${files.length})`
-        : `Resolving file names… (${tick}/${files.length})`;
-      bannerText.textContent = msg;
+      const extras = [];
+      if (folderCount > 0) extras.push(`${folderCount} folder${folderCount > 1 ? 's' : ''}`);
+      if (hvpCount    > 0) extras.push(`${hvpCount} interactive video${hvpCount > 1 ? 's' : ''}`);
+      const extraStr = extras.length ? ` + expanding ${extras.join(' & ')}` : '';
+      bannerText.textContent = `Resolving files${extraStr}… (${tick}/${files.length})`;
     }, 400);
 
     chrome.runtime.sendMessage({ action: 'resolveFilenames', files }, response => {
