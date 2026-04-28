@@ -1,10 +1,10 @@
 {
-  "manifest_version": 4,
+  "manifest_version": 3,
   "name": "Moodle Bulk Downloader",
-  "version": "4.0.0",
+  "version": "1.0.0",
   "description": "Download all study materials from a Moodle course page in one click.",
-  "permissions": ["downloads", "activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["downloads", "activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -16,17 +16,7 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["jszip.min.js", "content.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
