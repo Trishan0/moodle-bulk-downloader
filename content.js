@@ -8,7 +8,7 @@ const ICON_MAP = [
   { keys: ['text', 'txt', 'plain'],                                  ext: 'txt',   cat: 'docs',  label: 'TXT' },
   { keys: ['zip', 'archive', 'rar', '7z', 'tar', 'gz'],             ext: 'zip',   cat: 'docs',  label: 'ZIP' },
   { keys: ['video', 'mpeg', 'mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'quicktime'],
-    ext: 'mp4',   cat: 'video', label: 'Video' },
+                                                                      ext: 'mp4',   cat: 'video', label: 'Video' },
   { keys: ['audio', 'mp3', 'wav', 'ogg', 'aac', 'flac'],           ext: 'mp3',   cat: 'audio', label: 'Audio' },
   { keys: ['image', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'bmp'],    ext: 'img',   cat: 'image', label: 'Image' },
 ];
@@ -103,8 +103,8 @@ function scanForFiles() {
     const href = anchor.href;
     if (seen.has(href) || shouldSkip(href)) return;
     const typeInfo = detectFromUrl(href)
-        || detectFromStr((anchor.querySelector('img') || {}).src)
-        || { ext: 'file', cat: 'docs', label: 'File' };
+      || detectFromStr((anchor.querySelector('img') || {}).src)
+      || { ext: 'file', cat: 'docs', label: 'File' };
     seen.add(href);
     found.push({ url: href, name: getLinkLabel(anchor), ...typeInfo });
   });

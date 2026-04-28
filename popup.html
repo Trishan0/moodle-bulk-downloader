@@ -1,23 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Moodle Bulk Downloader</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      width: 380px;
+      width: 400px;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #0f1117;
       color: #e8eaf0;
       min-height: 200px;
     }
 
+    /* ── Header ── */
     .header {
       background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
-      padding: 16px 18px 14px;
+      padding: 14px 16px 12px;
       border-bottom: 1px solid #1e2535;
       display: flex;
       align-items: center;
@@ -25,57 +30,83 @@
     }
 
     .header-icon {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       background: linear-gradient(135deg, #4f6ef7, #7c3aed);
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 15px;
       flex-shrink: 0;
     }
 
     .header-text h1 {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #fff;
-      letter-spacing: 0.01em;
     }
 
     .header-text p {
-      font-size: 11px;
+      font-size: 10px;
       color: #6b7280;
       margin-top: 1px;
     }
 
-    .content {
-      padding: 14px 18px;
+    /* ── Resolving banner ── */
+    #resolvingBanner {
+      display: none;
+      background: #131a30;
+      border-bottom: 1px solid #1e2535;
+      padding: 7px 16px;
+      font-size: 11px;
+      color: #7c8db5;
+      align-items: center;
+      gap: 8px;
     }
 
-    /* Filter bar */
+    #resolvingBanner .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #1e2535;
+      border-top-color: #4f6ef7;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* ── Content ── */
+    .content {
+      padding: 12px 16px;
+    }
+
+    /* ── Filter bar ── */
     .filter-bar {
       display: flex;
-      gap: 6px;
+      gap: 5px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .filter-btn {
-      padding: 4px 11px;
+      padding: 3px 10px;
       border-radius: 20px;
       border: 1px solid #2a2f42;
       background: transparent;
       color: #9ca3af;
       font-size: 11px;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all .15s;
       display: flex;
       align-items: center;
       gap: 4px;
     }
 
-    .filter-btn:hover { border-color: #4f6ef7; color: #c7d2fe; }
+    .filter-btn:hover {
+      border-color: #4f6ef7;
+      color: #c7d2fe;
+    }
+
     .filter-btn.active {
       background: #1e2a5e;
       border-color: #4f6ef7;
@@ -95,57 +126,65 @@
       color: #c7d2fe;
     }
 
-    /* File list */
+    /* ── File list ── */
     .file-list {
-      max-height: 260px;
+      max-height: 240px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-bottom: 12px;
+      gap: 3px;
+      margin-bottom: 10px;
     }
 
-    .file-list::-webkit-scrollbar { width: 4px; }
-    .file-list::-webkit-scrollbar-track { background: transparent; }
-    .file-list::-webkit-scrollbar-thumb { background: #2a2f42; border-radius: 4px; }
+    .file-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .file-list::-webkit-scrollbar-thumb {
+      background: #2a2f42;
+      border-radius: 4px;
+    }
 
     .file-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 8px;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 7px;
       background: #161b27;
       border: 1px solid #1e2535;
-      transition: border-color 0.15s;
+      transition: border-color .15s;
       cursor: pointer;
     }
 
-    .file-item:hover { border-color: #2a3555; }
-    .file-item.selected { border-color: #4f6ef7; background: #131a35; }
+    .file-item:hover {
+      border-color: #2a3555;
+    }
+
+    .file-item.selected {
+      border-color: #4f6ef7;
+      background: #131a35;
+    }
 
     .file-checkbox {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border: 1.5px solid #374151;
       border-radius: 4px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.15s;
+      font-size: 9px;
+      font-weight: 700;
+      color: transparent;
+      transition: all .15s;
     }
 
     .file-item.selected .file-checkbox {
       background: #4f6ef7;
       border-color: #4f6ef7;
-    }
-
-    .file-item.selected .file-checkbox::after {
-      content: '✓';
       color: white;
-      font-size: 10px;
-      font-weight: 700;
     }
 
     .ext-badge {
@@ -155,19 +194,11 @@
       border-radius: 4px;
       flex-shrink: 0;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: .05em;
     }
 
-    .ext-pdf { background: #3b1515; color: #f87171; }
-    .ext-docx, .ext-doc { background: #132240; color: #60a5fa; }
-    .ext-pptx, .ext-ppt { background: #2d1a0e; color: #fb923c; }
-    .ext-txt { background: #1a2e1a; color: #4ade80; }
-    .ext-xlsx, .ext-xls { background: #0f2a1e; color: #34d399; }
-    .ext-zip { background: #2a1f3a; color: #c084fc; }
-    .ext-file { background: #1e2535; color: #9ca3af; }
-
     .file-name {
-      font-size: 12px;
+      font-size: 11px;
       color: #d1d5db;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -175,25 +206,135 @@
       flex: 1;
     }
 
-    /* States */
+    .file-name.resolving {
+      color: #4b5563;
+      font-style: italic;
+    }
+
+    .file-name.resolved {
+      color: #d1d5db;
+    }
+
+    /* ── Empty / scanning ── */
     .empty-state {
       text-align: center;
-      padding: 30px 20px;
+      padding: 28px 20px;
       color: #4b5563;
     }
 
-    .empty-state .emoji { font-size: 32px; margin-bottom: 10px; }
-    .empty-state p { font-size: 13px; line-height: 1.5; }
-    .empty-state small { font-size: 11px; color: #374151; margin-top: 6px; display: block; }
+    .empty-state .emoji {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
 
-    /* Footer */
+    .empty-state p {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .empty-state small {
+      font-size: 10px;
+      color: #374151;
+      margin-top: 5px;
+      display: block;
+    }
+
+    .scanning {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      gap: 8px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #1e2535;
+      border-top-color: #4f6ef7;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Download mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 10px;
+      border: 1px solid #2a2f42;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 6px 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all .15s;
+      background: transparent;
+      color: #6b7280;
+    }
+
+    .mode-btn:first-child {
+      border-right: 1px solid #2a2f42;
+    }
+
+    .mode-btn.active {
+      background: #1e2a5e;
+      color: #a5b4fc;
+    }
+
+    .mode-btn:hover:not(.active) {
+      background: #161b27;
+      color: #9ca3af;
+    }
+
+    /* ── Progress area ── */
+    #progressArea {
+      display: none;
+      padding: 0 16px 10px;
+    }
+
+    .progress-bar-wrap {
+      height: 3px;
+      background: #1e2535;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4f6ef7, #7c3aed);
+      border-radius: 2px;
+      transition: width .3s;
+      width: 0%;
+    }
+
+    #statusMsg {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    /* ── Footer ── */
     .footer {
       border-top: 1px solid #1e2535;
-      padding: 12px 18px;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
 
     .select-all {
@@ -201,114 +342,125 @@
       color: #6b7280;
       cursor: pointer;
       user-select: none;
-      transition: color 0.15s;
+      transition: color .15s;
+      white-space: nowrap;
     }
-    .select-all:hover { color: #a5b4fc; }
+
+    .select-all:hover {
+      color: #a5b4fc;
+    }
 
     .count-label {
       font-size: 11px;
       color: #4b5563;
+      white-space: nowrap;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
     }
 
     .download-btn {
-      padding: 8px 18px;
+      padding: 7px 16px;
       background: linear-gradient(135deg, #4f6ef7, #7c3aed);
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 13px;
+      border-radius: 7px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap;
     }
 
-    .download-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-    .download-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-    /* Progress */
-    .progress-bar-wrap {
-      height: 2px;
-      background: #1e2535;
-      margin: 0 18px 10px;
-      border-radius: 2px;
-      overflow: hidden;
-      display: none;
+    .download-btn:hover:not(:disabled) {
+      opacity: .9;
+      transform: translateY(-1px);
     }
 
-    .progress-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #4f6ef7, #7c3aed);
-      border-radius: 2px;
-      transition: width 0.3s;
-      width: 0%;
+    .download-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none;
     }
 
-    .status-msg {
-      font-size: 11px;
-      color: #6b7280;
-      padding: 0 18px 8px;
-      display: none;
-    }
-
-    .scanning {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 30px;
-      gap: 8px;
-      color: #6b7280;
+    .cancel-btn {
+      padding: 7px 12px;
+      background: transparent;
+      color: #ef4444;
+      border: 1px solid #3b1515;
+      border-radius: 7px;
       font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: none;
+      white-space: nowrap;
     }
 
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid #1e2535;
-      border-top-color: #4f6ef7;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+    .cancel-btn:hover {
+      background: #3b1515;
     }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
+
 <body>
-<div class="header">
-  <div class="header-icon">📦</div>
-  <div class="header-text">
-    <h1>Moodle Bulk Downloader</h1>
-    <p>Download all course materials at once</p>
-  </div>
-</div>
 
-<div id="scanning-state" class="scanning">
-  <div class="spinner"></div>
-  Scanning page...
-</div>
-
-<div id="main" style="display:none">
-  <div class="content">
-    <div class="filter-bar" id="filterBar"></div>
-    <div class="file-list" id="fileList"></div>
+  <div class="header">
+    <div class="header-icon">📦</div>
+    <div class="header-text">
+      <h1>Moodle Bulk Downloader</h1>
+      <p>Download all course materials at once</p>
+    </div>
   </div>
 
-  <div class="progress-bar-wrap" id="progressWrap">
-    <div class="progress-bar-fill" id="progressFill"></div>
+  <div id="resolvingBanner">
+    <div class="spinner"></div>
+    <span id="resolvingText">Resolving file names…</span>
   </div>
-  <div class="status-msg" id="statusMsg"></div>
 
-  <div class="footer">
-    <span class="select-all" id="selectAll">Select all</span>
-    <span class="count-label" id="countLabel"></span>
-    <button class="download-btn" id="downloadBtn" disabled>
-      ⬇ Download
-    </button>
+  <div id="scanning-state" class="scanning">
+    <div class="spinner"></div>
+    Scanning page…
   </div>
-</div>
 
-<script src="popup.js"></script>
+  <div id="main" style="display:none">
+    <div class="content">
+      <!-- Category filters -->
+      <div class="filter-bar" id="filterBar"></div>
+
+      <!-- Download mode toggle -->
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeIndividual">⬇ Individual files</button>
+        <button class="mode-btn" id="modeZip">🗜 Download as ZIP</button>
+      </div>
+
+      <!-- File list -->
+      <div class="file-list" id="fileList"></div>
+    </div>
+
+    <!-- Progress -->
+    <div id="progressArea">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div id="statusMsg"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="select-all" id="selectAll">Select all</span>
+      <span class="count-label" id="countLabel"></span>
+      <div class="btn-group">
+        <button class="cancel-btn" id="cancelBtn">✕ Cancel</button>
+        <button class="download-btn" id="downloadBtn" disabled>⬇ Download</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
+
 </html>
