@@ -62,7 +62,7 @@
     }
 
     .filter-btn {
-      padding: 3px 10px;
+      padding: 4px 11px;
       border-radius: 20px;
       border: 1px solid #2a2f42;
       background: transparent;
@@ -70,6 +70,9 @@
       font-size: 11px;
       cursor: pointer;
       transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .filter-btn:hover { border-color: #4f6ef7; color: #c7d2fe; }
@@ -77,6 +80,19 @@
       background: #1e2a5e;
       border-color: #4f6ef7;
       color: #a5b4fc;
+    }
+
+    .filter-count {
+      background: #2a3050;
+      color: #6b7baa;
+      border-radius: 10px;
+      padding: 0 5px;
+      font-size: 10px;
+    }
+
+    .filter-btn.active .filter-count {
+      background: #3a4a8e;
+      color: #c7d2fe;
     }
 
     /* File list */
@@ -260,39 +276,39 @@
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-icon">📦</div>
-    <div class="header-text">
-      <h1>Moodle Bulk Downloader</h1>
-      <p>Download all course materials at once</p>
-    </div>
+<div class="header">
+  <div class="header-icon">📦</div>
+  <div class="header-text">
+    <h1>Moodle Bulk Downloader</h1>
+    <p>Download all course materials at once</p>
+  </div>
+</div>
+
+<div id="scanning-state" class="scanning">
+  <div class="spinner"></div>
+  Scanning page...
+</div>
+
+<div id="main" style="display:none">
+  <div class="content">
+    <div class="filter-bar" id="filterBar"></div>
+    <div class="file-list" id="fileList"></div>
   </div>
 
-  <div id="scanning-state" class="scanning">
-    <div class="spinner"></div>
-    Scanning page...
+  <div class="progress-bar-wrap" id="progressWrap">
+    <div class="progress-bar-fill" id="progressFill"></div>
   </div>
+  <div class="status-msg" id="statusMsg"></div>
 
-  <div id="main" style="display:none">
-    <div class="content">
-      <div class="filter-bar" id="filterBar"></div>
-      <div class="file-list" id="fileList"></div>
-    </div>
-
-    <div class="progress-bar-wrap" id="progressWrap">
-      <div class="progress-bar-fill" id="progressFill"></div>
-    </div>
-    <div class="status-msg" id="statusMsg"></div>
-
-    <div class="footer">
-      <span class="select-all" id="selectAll">Select all</span>
-      <span class="count-label" id="countLabel"></span>
-      <button class="download-btn" id="downloadBtn" disabled>
-        ⬇ Download
-      </button>
-    </div>
+  <div class="footer">
+    <span class="select-all" id="selectAll">Select all</span>
+    <span class="count-label" id="countLabel"></span>
+    <button class="download-btn" id="downloadBtn" disabled>
+      ⬇ Download
+    </button>
   </div>
+</div>
 
-  <script src="popup.js"></script>
+<script src="popup.js"></script>
 </body>
 </html>
