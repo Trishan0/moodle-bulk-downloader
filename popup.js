@@ -1,67 +1,75 @@
-// popup.js
+// popup.js - v2
 
 let allFiles = [];
 let selectedIds = new Set();
 let activeFilter = 'all';
 
-const EXT_ORDER = ['pdf', 'pptx', 'ppt', 'docx', 'doc', 'txt', 'xlsx', 'xls', 'zip'];
+// Category config
+const CATEGORIES = [
+  { id: 'all',   label: 'All',      icon: '📦' },
+  { id: 'docs',  label: 'Docs',     icon: '📄' },
+  { id: 'video', label: 'Videos',   icon: '🎬' },
+  { id: 'audio', label: 'Audio',    icon: '🎵' },
+  { id: 'image', label: 'Images',   icon: '🖼️' },
+];
 
-function extClass(ext) {
-  if (['pptx','ppt'].includes(ext)) return 'ext-pptx';
-  if (['docx','doc'].includes(ext)) return 'ext-docx';
-  if (['xlsx','xls'].includes(ext)) return 'ext-xlsx';
-  return `ext-${ext}` ;
+// Badge styling per ext
+const EXT_STYLE = {
+  pdf:   { bg: '#3b1515', color: '#f87171' },
+  docx:  { bg: '#132240', color: '#60a5fa' },
+  pptx:  { bg: '#2d1a0e', color: '#fb923c' },
+  xlsx:  { bg: '#0f2a1e', color: '#34d399' },
+  txt:   { bg: '#1a2e1a', color: '#86efac' },
+  zip:   { bg: '#2a1f3a', color: '#c084fc' },
+  mp4:   { bg: '#1f1a3a', color: '#a78bfa' },
+  mp3:   { bg: '#1a2535', color: '#67e8f9' },
+  img:   { bg: '#2a1a1a', color: '#fca5a5' },
+  file:  { bg: '#1e2535', color: '#9ca3af' },
+};
+
+function badgeStyle(ext) {
+  const s = EXT_STYLE[ext] || EXT_STYLE.file;
+  return `background:${s.bg};color:${s.color}`;
+}
+
+function visibleFiles() {
+  if (activeFilter === 'all') return allFiles;
+  return allFiles.filter(f => f.cat === activeFilter);
 }
 
 function getFilename(file) {
   try {
     const url = new URL(file.url);
-    const pathname = url.pathname;
-    const parts = pathname.split('/');
+    const parts = url.pathname.split('/');
     const last = decodeURIComponent(parts[parts.length - 1]);
     if (last && last.includes('.')) return last;
   } catch(e) {}
-  // fallback: slugify the name + ext
   const slug = file.name.replace(/[^a-zA-Z0-9\s\-_.]/g, '').trim().replace(/\s+/g, '_').slice(0, 60);
-  return slug + (file.ext !== 'file' ? '.' + file.ext : '');
+  return slug + (file.ext && file.ext !== 'file' ? '.' + file.ext : '');
 }
 
-function renderFilterBar(files) {
+function renderFilterBar() {
   const bar = document.getElementById('filterBar');
-  const extCounts = {};
-  files.forEach(f => {
-    extCounts[f.ext] = (extCounts[f.ext] || 0) + 1;
-  });
+  const counts = { all: allFiles.length };
+  allFiles.forEach(f => { counts[f.cat] = (counts[f.cat] || 0) + 1; });
 
-  const btns = [{ label: `All (${files.length})`, value: 'all' }];
-  EXT_ORDER.forEach(ext => {
-    if (extCounts[ext]) {
-      btns.push({ label: `${ext.toUpperCase()} (${extCounts[ext]})`, value: ext });
-    }
-  });
-  // any other ext
-  Object.keys(extCounts).forEach(ext => {
-    if (!EXT_ORDER.includes(ext)) {
-      btns.push({ label: `${ext.toUpperCase()} (${extCounts[ext]})`, value: ext });
-    }
-  });
-
-  bar.innerHTML = btns.map(b =>
-    `<button class="filter-btn ${b.value === activeFilter ? 'active' : ''}" data-filter="${b.value}">${b.label}</button>`
-  ).join('');
+  bar.innerHTML = CATEGORIES
+      .filter(c => c.id === 'all' || counts[c.id])
+      .map(c => {
+        const count = counts[c.id] || 0;
+        const active = activeFilter === c.id ? 'active' : '';
+        return `<button class="filter-btn ${active}" data-filter="${c.id}">
+        ${c.icon} ${c.label} <span class="filter-count">${count}</span>
+      </button>`;
+      }).join('');
 
   bar.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
-      renderFilterBar(files);
+      renderFilterBar();
       renderFileList();
     });
   });
-}
-
-function visibleFiles() {
-  if (activeFilter === 'all') return allFiles;
-  return allFiles.filter(f => f.ext === activeFilter);
 }
 
 function renderFileList() {
@@ -71,21 +79,20 @@ function renderFileList() {
   if (files.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
-        <div class="emoji">🔍</div>
-        <p>No files found on this page.</p>
-        <small>Navigate to a Moodle course page and try again.</small>
+        <div class="emoji">📭</div>
+        <p>No files in this category.</p>
       </div>`;
     updateFooter();
     return;
   }
 
-  list.innerHTML = files.map((f, i) => {
+  list.innerHTML = files.map(f => {
     const id = allFiles.indexOf(f);
     const selected = selectedIds.has(id);
     return `
       <div class="file-item ${selected ? 'selected' : ''}" data-id="${id}">
-        <div class="file-checkbox"></div>
-        <span class="ext-badge ${extClass(f.ext)}">${f.ext}</span>
+        <div class="file-checkbox">${selected ? '✓' : ''}</div>
+        <span class="ext-badge" style="${badgeStyle(f.ext)}">${f.label || f.ext.toUpperCase()}</span>
         <span class="file-name" title="${f.name}">${f.name || 'Unnamed file'}</span>
       </div>`;
   }).join('');
@@ -95,11 +102,10 @@ function renderFileList() {
       const id = parseInt(item.dataset.id);
       if (selectedIds.has(id)) {
         selectedIds.delete(id);
-        item.classList.remove('selected');
       } else {
         selectedIds.add(id);
-        item.classList.add('selected');
       }
+      renderFileList();
       updateFooter();
     });
   });
@@ -124,7 +130,6 @@ function updateFooter() {
 document.getElementById('selectAll').addEventListener('click', () => {
   const vis = visibleFiles();
   const allVisSelected = vis.every(f => selectedIds.has(allFiles.indexOf(f)));
-
   if (allVisSelected) {
     vis.forEach(f => selectedIds.delete(allFiles.indexOf(f)));
   } else {
@@ -135,7 +140,7 @@ document.getElementById('selectAll').addEventListener('click', () => {
 
 document.getElementById('downloadBtn').addEventListener('click', async () => {
   const toDownload = allFiles.filter((_, i) => selectedIds.has(i));
-  if (toDownload.length === 0) return;
+  if (!toDownload.length) return;
 
   const btn = document.getElementById('downloadBtn');
   const progressWrap = document.getElementById('progressWrap');
@@ -143,70 +148,58 @@ document.getElementById('downloadBtn').addEventListener('click', async () => {
   const statusMsg = document.getElementById('statusMsg');
 
   btn.disabled = true;
-  btn.textContent = '⬇ Downloading...';
+  btn.innerHTML = '⬇ Downloading...';
   progressWrap.style.display = 'block';
   statusMsg.style.display = 'block';
 
-  for (let i = 0; i < toDownload.length; i++) {
-    const file = toDownload[i];
-    statusMsg.textContent = `Downloading ${i + 1}/${toDownload.length}: ${file.name.slice(0, 40)}...`;
-    progressFill.style.width = `${((i) / toDownload.length) * 100}%`;
-
+  let done = 0;
+  for (const file of toDownload) {
+    statusMsg.textContent = `Downloading ${done + 1}/${toDownload.length}: ${file.name.slice(0, 38)}…`;
+    progressFill.style.width = `${(done / toDownload.length) * 100}%`;
     try {
       await chrome.downloads.download({
         url: file.url,
         filename: getFilename(file),
         conflictAction: 'uniquify'
       });
-    } catch (e) {
-      console.warn('Failed to download:', file.url, e);
+    } catch(e) {
+      console.warn('Download failed:', file.url, e);
     }
-
-    // Small delay to avoid hammering the server
-    await new Promise(r => setTimeout(r, 300));
+    done++;
+    await new Promise(r => setTimeout(r, 350));
   }
 
   progressFill.style.width = '100%';
-  statusMsg.textContent = `✅ Done! ${toDownload.length} file${toDownload.length > 1 ? 's' : ''} sent to Downloads.`;
-  btn.textContent = '⬇ Download';
+  statusMsg.textContent = `✅ Done! ${done} file${done !== 1 ? 's' : ''} sent to Downloads.`;
+  btn.innerHTML = '⬇ Download';
   btn.disabled = false;
 });
 
-// Init: scan the active tab
 async function init() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    // Inject content script if needed
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js']
-    }).catch(() => {}); // ignore if already injected
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }).catch(() => {});
 
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'scan' });
-
     allFiles = response?.files || [];
-
-    // Auto-select all
     allFiles.forEach((_, i) => selectedIds.add(i));
 
     document.getElementById('scanning-state').style.display = 'none';
     document.getElementById('main').style.display = 'block';
 
-    if (allFiles.length === 0) {
+    if (!allFiles.length) {
       document.getElementById('filterBar').style.display = 'none';
       document.getElementById('fileList').innerHTML = `
         <div class="empty-state">
           <div class="emoji">📭</div>
           <p>No downloadable files found on this page.</p>
-          <small>Make sure you're on a Moodle course page with resources listed.</small>
+          <small>Make sure you're on a Moodle course page with resources.</small>
         </div>`;
-      updateFooter();
     } else {
-      renderFilterBar(allFiles);
+      renderFilterBar();
       renderFileList();
     }
-  } catch (e) {
+  } catch(e) {
     document.getElementById('scanning-state').innerHTML = `
       <div class="empty-state" style="padding:30px">
         <div class="emoji">⚠️</div>
