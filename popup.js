@@ -1,68 +1,67 @@
-// popup.js - Moodle Bulk Downloader v3
+// popup.js - Moodle Bulk Downloader v4
+// ZIP is built here in the popup page (not the service worker) so JSZip loads fine.
 
-let allFiles = [];        // raw files from content scan
-let resolvedFiles = [];   // files with resolvedName filled in
-let selectedIds = new Set();
+let allFiles     = [];   // raw files from content scan
+let resolvedFiles = [];  // files with .resolvedName set
+let selectedIds  = new Set();
 let activeFilter = 'all';
-let downloadMode = 'individual'; // 'individual' | 'zip'
+let downloadMode = 'individual';
 let isDownloading = false;
 
-// ── Category config ───────────────────────────────────────────────────────────
+// ── Categories ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
-  { id: 'all',   label: 'All',    icon: '📦' },
-  { id: 'docs',  label: 'Docs',   icon: '📄' },
-  { id: 'video', label: 'Videos', icon: '🎬' },
-  { id: 'audio', label: 'Audio',  icon: '🎵' },
-  { id: 'image', label: 'Images', icon: '🖼️' },
+  { id:'all',   label:'All',    icon:'📦' },
+  { id:'docs',  label:'Docs',   icon:'📄' },
+  { id:'video', label:'Videos', icon:'🎬' },
+  { id:'audio', label:'Audio',  icon:'🎵' },
+  { id:'image', label:'Images', icon:'🖼️' },
 ];
 
 // ── Badge colours ─────────────────────────────────────────────────────────────
 const EXT_STYLE = {
-  pdf:  { bg:'#3b1515', color:'#f87171' },
-  docx: { bg:'#132240', color:'#60a5fa' },
-  pptx: { bg:'#2d1a0e', color:'#fb923c' },
-  xlsx: { bg:'#0f2a1e', color:'#34d399' },
-  txt:  { bg:'#1a2e1a', color:'#86efac' },
-  zip:  { bg:'#2a1f3a', color:'#c084fc' },
-  mp4:  { bg:'#1f1a3a', color:'#a78bfa' },
-  mp3:  { bg:'#1a2535', color:'#67e8f9' },
-  img:  { bg:'#2a1a1a', color:'#fca5a5' },
-  file: { bg:'#1e2535', color:'#9ca3af' },
+  pdf:  {bg:'#3b1515',color:'#f87171'},
+  docx: {bg:'#132240',color:'#60a5fa'},
+  pptx: {bg:'#2d1a0e',color:'#fb923c'},
+  xlsx: {bg:'#0f2a1e',color:'#34d399'},
+  txt:  {bg:'#1a2e1a',color:'#86efac'},
+  zip:  {bg:'#2a1f3a',color:'#c084fc'},
+  mp4:  {bg:'#1f1a3a',color:'#a78bfa'},
+  mp3:  {bg:'#1a2535',color:'#67e8f9'},
+  img:  {bg:'#2a1a1a',color:'#fca5a5'},
+  file: {bg:'#1e2535',color:'#9ca3af'},
 };
-function badgeStyle(ext) {
-  const s = EXT_STYLE[ext] || EXT_STYLE.file;
-  return `background:${s.bg};color:${s.color}`;
-}
+const badgeStyle = ext => { const s=EXT_STYLE[ext]||EXT_STYLE.file; return `background:${s.bg};color:${s.color}`; };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const srcFiles = () => resolvedFiles.length ? resolvedFiles : allFiles;
 function visibleFiles() {
-  const src = resolvedFiles.length ? resolvedFiles : allFiles;
-  if (activeFilter === 'all') return src;
-  return src.filter(f => f.cat === activeFilter);
+  const src = srcFiles();
+  return activeFilter === 'all' ? src : src.filter(f => f.cat === activeFilter);
 }
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function buildFallbackName(f) {
+  const slug = (f.name||'file').replace(/[^a-zA-Z0-9\s\-_.]/g,'').trim().replace(/\s+/g,'_').slice(0,60);
+  const ext  = f.ext && f.ext!=='file' && f.ext!=='img' ? '.'+f.ext : '';
+  return slug + ext;
+}
 
 // ── Filter bar ────────────────────────────────────────────────────────────────
 function renderFilterBar() {
   const bar = document.getElementById('filterBar');
-  const counts = { all: allFiles.length };
-  allFiles.forEach(f => { counts[f.cat] = (counts[f.cat] || 0) + 1; });
-
+  const counts = {all: allFiles.length};
+  allFiles.forEach(f => { counts[f.cat] = (counts[f.cat]||0)+1; });
   bar.innerHTML = CATEGORIES
-      .filter(c => c.id === 'all' || counts[c.id])
-      .map(c => {
-        const active = activeFilter === c.id ? 'active' : '';
-        return `<button class="filter-btn ${active}" data-filter="${c.id}">
-        ${c.icon} ${c.label} <span class="filter-count">${counts[c.id] || 0}</span>
+    .filter(c => c.id==='all' || counts[c.id])
+    .map(c => {
+      const active = activeFilter===c.id ? 'active' : '';
+      return `<button class="filter-btn ${active}" data-filter="${c.id}">
+        ${c.icon} ${c.label} <span class="filter-count">${counts[c.id]||0}</span>
       </button>`;
-      }).join('');
-
+    }).join('');
   bar.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
-      renderFilterBar();
-      renderFileList();
+      renderFilterBar(); renderFileList();
     });
   });
 }
@@ -71,72 +70,60 @@ function renderFilterBar() {
 function renderFileList() {
   const list = document.getElementById('fileList');
   const files = visibleFiles();
+  const src   = srcFiles();
 
   if (!files.length) {
     list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>No files in this category.</p></div>`;
-    updateFooter();
-    return;
+    updateFooter(); return;
   }
 
-  const stillResolving = resolvedFiles.length === 0;
-
   list.innerHTML = files.map(f => {
-    const id = allFiles.findIndex(x => x === (resolvedFiles.length ? resolvedFiles[allFiles.indexOf(f)] : f));
-    // map back to index in allFiles
-    const idx = resolvedFiles.length
-        ? resolvedFiles.indexOf(f)
-        : allFiles.indexOf(f);
+    const idx      = src.indexOf(f);
     const selected = selectedIds.has(idx);
-    const displayName = f.resolvedName || f.name || 'Unnamed';
-    const nameClass = f.resolvedName ? 'resolved' : (stillResolving ? 'resolving' : '');
-    return `
-      <div class="file-item ${selected ? 'selected' : ''}" data-idx="${idx}">
-        <div class="file-checkbox">${selected ? '✓' : ''}</div>
-        <span class="ext-badge" style="${badgeStyle(f.ext)}">${f.label || f.ext.toUpperCase()}</span>
-        <span class="file-name ${nameClass}" title="${displayName}">${displayName}</span>
-      </div>`;
+    const display  = f.resolvedName || f.name || 'Unnamed';
+    const dimmed   = !f.resolvedName && resolvedFiles.length === 0 ? 'resolving' : '';
+    return `<div class="file-item ${selected?'selected':''}" data-idx="${idx}">
+      <div class="file-checkbox">${selected?'✓':''}</div>
+      <span class="ext-badge" style="${badgeStyle(f.ext)}">${f.label||f.ext.toUpperCase()}</span>
+      <span class="file-name ${dimmed}" title="${display}">${display}</span>
+    </div>`;
   }).join('');
 
   list.querySelectorAll('.file-item').forEach(item => {
     item.addEventListener('click', () => {
       if (isDownloading) return;
       const idx = parseInt(item.dataset.idx);
-      if (selectedIds.has(idx)) selectedIds.delete(idx);
-      else selectedIds.add(idx);
-      renderFileList();
-      updateFooter();
+      selectedIds.has(idx) ? selectedIds.delete(idx) : selectedIds.add(idx);
+      renderFileList(); updateFooter();
     });
   });
-
   updateFooter();
 }
 
 // ── Footer ────────────────────────────────────────────────────────────────────
 function updateFooter() {
-  const btn = document.getElementById('downloadBtn');
-  const label = document.getElementById('countLabel');
-  const selAll = document.getElementById('selectAll');
+  const btn       = document.getElementById('downloadBtn');
+  const label     = document.getElementById('countLabel');
+  const selAll    = document.getElementById('selectAll');
   const cancelBtn = document.getElementById('cancelBtn');
 
   label.textContent = selectedIds.size > 0 ? `${selectedIds.size} selected` : '';
   btn.disabled = selectedIds.size === 0 || isDownloading;
+  btn.textContent = downloadMode==='zip' ? '🗜 Download ZIP' : '⬇ Download';
 
   const vis = visibleFiles();
-  const allVisSelected = vis.length > 0 && vis.every((_, i) => {
-    const idx = resolvedFiles.length ? resolvedFiles.indexOf(vis[i]) : allFiles.indexOf(vis[i]);
-    return selectedIds.has(idx);
-  });
-  selAll.textContent = allVisSelected ? 'Deselect all' : 'Select all';
+  const src = srcFiles();
+  const allSel = vis.length>0 && vis.every(f => selectedIds.has(src.indexOf(f)));
+  selAll.textContent = allSel ? 'Deselect all' : 'Select all';
+  selAll.style.opacity = isDownloading ? '.4' : '1';
   selAll.style.pointerEvents = isDownloading ? 'none' : '';
-
   cancelBtn.style.display = isDownloading ? 'block' : 'none';
-  btn.textContent = downloadMode === 'zip' ? '🗜 Download ZIP' : '⬇ Download';
 }
 
 // ── Select all ────────────────────────────────────────────────────────────────
 document.getElementById('selectAll').addEventListener('click', () => {
   if (isDownloading) return;
-  const src = resolvedFiles.length ? resolvedFiles : allFiles;
+  const src = srcFiles();
   const vis = visibleFiles();
   const allSel = vis.every(f => selectedIds.has(src.indexOf(f)));
   if (allSel) vis.forEach(f => selectedIds.delete(src.indexOf(f)));
@@ -161,39 +148,29 @@ document.getElementById('modeZip').addEventListener('click', () => {
 // ── Cancel ────────────────────────────────────────────────────────────────────
 document.getElementById('cancelBtn').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ action: 'cancel' });
-  // UI will reset from the download loop detecting cancellation
 });
 
 // ── Progress helpers ──────────────────────────────────────────────────────────
 function showProgress(pct, msg) {
   document.getElementById('progressArea').style.display = 'block';
-  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressFill').style.width = Math.round(pct) + '%';
   document.getElementById('statusMsg').textContent = msg;
 }
 function hideProgress() {
   document.getElementById('progressArea').style.display = 'none';
   document.getElementById('progressFill').style.width = '0%';
-  document.getElementById('statusMsg').textContent = '';
 }
-function setDownloading(val) {
-  isDownloading = val;
-  updateFooter();
-}
+function setDownloading(val) { isDownloading = val; updateFooter(); }
 
 // ── Download button ───────────────────────────────────────────────────────────
 document.getElementById('downloadBtn').addEventListener('click', async () => {
-  const src = resolvedFiles.length ? resolvedFiles : allFiles;
-  const toDownload = src.filter((_, i) => selectedIds.has(i));
+  const src = srcFiles();
+  const toDownload = src.filter((_,i) => selectedIds.has(i));
   if (!toDownload.length) return;
 
   setDownloading(true);
-
-  if (downloadMode === 'zip') {
-    await runZipDownload(toDownload);
-  } else {
-    await runIndividualDownload(toDownload);
-  }
-
+  if (downloadMode === 'zip') await runZipDownload(toDownload);
+  else                        await runIndividualDownload(toDownload);
   setDownloading(false);
   hideProgress();
 });
@@ -202,136 +179,130 @@ document.getElementById('downloadBtn').addEventListener('click', async () => {
 async function runIndividualDownload(files) {
   let done = 0;
   for (const file of files) {
-    // Check cancel
     const { cancelled } = await chrome.runtime.sendMessage({ action: 'checkCancel' });
     if (cancelled) {
-      showProgress((done / files.length) * 100, `⛔ Cancelled after ${done} file${done !== 1 ? 's' : ''}.`);
-      await sleep(1500);
-      return;
+      showProgress((done/files.length)*100, `⛔ Cancelled after ${done} file${done!==1?'s':''}.`);
+      await sleep(1800); return;
     }
-
-    showProgress((done / files.length) * 100,
-        `Downloading ${done + 1}/${files.length}: ${(file.resolvedName || file.name).slice(0, 42)}…`);
-
+    showProgress((done/files.length)*100,
+      `Downloading ${done+1}/${files.length}: ${(file.resolvedName||file.name).slice(0,42)}…`);
     const filename = file.resolvedName || buildFallbackName(file);
-
-    await chrome.runtime.sendMessage({
-      action: 'download',
-      url: file.url,
-      filename
-    });
-
+    await chrome.runtime.sendMessage({ action:'download', url:file.url, filename });
     done++;
     await sleep(350);
   }
-  showProgress(100, `✅ Done! ${done} file${done !== 1 ? 's' : ''} sent to Downloads.`);
+  showProgress(100, `✅ Done! ${done} file${done!==1?'s':''} sent to Downloads.`);
   await sleep(2000);
 }
 
-// ── ZIP download ──────────────────────────────────────────────────────────────
+// ── ZIP download (runs in popup page — JSZip is loaded via <script> tag) ──────
 async function runZipDownload(files) {
-  showProgress(0, `Fetching ${files.length} file${files.length !== 1 ? 's' : ''}…`);
+  if (typeof JSZip === 'undefined') {
+    showProgress(0, '❌ JSZip failed to load. Try reloading the extension.');
+    await sleep(3000); return;
+  }
 
-  // Poll zip progress from storage while background builds
-  const pollInterval = setInterval(async () => {
-    const data = await chrome.storage.session.get('zipProgress');
-    const p = data.zipProgress;
-    if (!p) return;
-    if (p.phase === 'fetch') {
-      const pct = Math.round((p.current / p.total) * 80);
-      showProgress(pct, `Fetching ${p.current + 1}/${p.total}: ${(p.name || '').slice(0, 40)}…`);
-    } else if (p.phase === 'compress') {
-      const pct = 80 + Math.round((p.percent || 0) * 0.2);
-      showProgress(pct, `Compressing… ${Math.round(p.percent || 0)}%`);
+  const zip = new JSZip();
+  const usedNames = {};
+
+  for (let i = 0; i < files.length; i++) {
+    const { cancelled } = await chrome.runtime.sendMessage({ action: 'checkCancel' });
+    if (cancelled) {
+      showProgress((i/files.length)*80, `⛔ Cancelled after ${i} file${i!==1?'s':''}.`);
+      await sleep(1800); return;
     }
-  }, 300);
 
-  const courseName = document.title || 'moodle-materials';
-  const zipName = courseName.replace(/[^a-zA-Z0-9\s\-_]/g, '').trim().replace(/\s+/g, '_').slice(0, 50) + '.zip';
+    const file  = files[i];
+    const label = (file.resolvedName || file.name).slice(0,42);
+    showProgress((i/files.length)*80, `Fetching ${i+1}/${files.length}: ${label}…`);
 
-  const result = await chrome.runtime.sendMessage({
-    action: 'buildZip',
-    files,
-    zipName
-  });
+    // Ask background to fetch the file (has session cookies)
+    const result = await chrome.runtime.sendMessage({ action:'fetchBase64', url:file.url });
 
-  clearInterval(pollInterval);
-  await chrome.storage.session.remove('zipProgress');
+    if (result.cancelled) {
+      showProgress((i/files.length)*80, `⛔ Cancelled.`);
+      await sleep(1800); return;
+    }
+    if (result.error) {
+      console.warn('Skipping', file.url, result.error);
+      continue; // skip failed files, keep going
+    }
 
-  if (result.cancelled) {
-    showProgress(0, '⛔ Cancelled.');
-    await sleep(1500);
-    return;
+    // Deduplicate filenames inside the ZIP
+    let fname = file.resolvedName || buildFallbackName(file);
+    if (usedNames[fname] !== undefined) {
+      usedNames[fname]++;
+      const dot = fname.lastIndexOf('.');
+      fname = dot > 0
+        ? fname.slice(0,dot) + ` (${usedNames[fname]})` + fname.slice(dot)
+        : fname + ` (${usedNames[fname]})`;
+    } else {
+      usedNames[fname] = 0;
+    }
+
+    // Decode base64 → Uint8Array and add to zip
+    const binary = atob(result.base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
+    zip.file(fname, bytes);
   }
-  if (result.error) {
-    showProgress(0, `❌ Error: ${result.error}`);
+
+  showProgress(80, 'Compressing…');
+
+  try {
+    const blob = await zip.generateAsync(
+      { type:'blob', compression:'DEFLATE', compressionOptions:{level:6} },
+      meta => showProgress(80 + meta.percent * 0.19, `Compressing… ${Math.round(meta.percent)}%`)
+    );
+
+    // Build a safe ZIP filename from the page title
+    const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
+    const title = (tab?.title || 'moodle-materials')
+      .replace(/[^a-zA-Z0-9\s\-_]/g,'').trim().replace(/\s+/g,'_').slice(0,50);
+    const zipName = title + '.zip';
+
+    // Create object URL and trigger download
+    const objUrl = URL.createObjectURL(blob);
+    await chrome.runtime.sendMessage({ action:'download', url:objUrl, filename:zipName });
+    showProgress(100, `✅ ZIP saved as "${zipName}"`);
+    // Revoke after a delay to allow Chrome to start the download
+    setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
     await sleep(2500);
-    return;
+  } catch(e) {
+    showProgress(0, `❌ ZIP failed: ${e.message}`);
+    await sleep(3000);
   }
-
-  // Trigger download of the base64 ZIP
-  showProgress(100, 'Saving ZIP…');
-  const dataUrl = `data:application/zip;base64,${result.base64}`;
-  await chrome.runtime.sendMessage({
-    action: 'download',
-    url: dataUrl,
-    filename: result.zipName
-  });
-  showProgress(100, `✅ ZIP saved as "${result.zipName}"`);
-  await sleep(2500);
 }
 
-// ── Fallback filename builder ─────────────────────────────────────────────────
-function buildFallbackName(file) {
-  const slug = (file.name || 'file').replace(/[^a-zA-Z0-9\s\-_.]/g, '').trim().replace(/\s+/g, '_').slice(0, 60);
-  const ext = file.ext && file.ext !== 'file' && file.ext !== 'img' ? '.' + file.ext : '';
-  return slug + ext;
-}
-
-// ── Resolve real filenames via background HEAD requests ───────────────────────
+// ── Resolve real filenames via background HEAD/GET ────────────────────────────
 async function resolveFilenames(files) {
-  const banner = document.getElementById('resolvingBanner');
+  const banner     = document.getElementById('resolvingBanner');
   const bannerText = document.getElementById('resolvingText');
   banner.style.display = 'flex';
 
-  return new Promise((resolve) => {
-    let completed = 0;
-    const results = [...files];
-
-    // Send all at once — background resolves in parallel
-    chrome.runtime.sendMessage(
-        { action: 'resolveFilenames', files },
-        (response) => {
-          banner.style.display = 'none';
-          if (response?.files) {
-            resolve(response.files);
-          } else {
-            resolve(files); // fallback to original
-          }
-        }
-    );
-
-    // Update banner text with a simple counter while waiting
+  return new Promise(resolve => {
+    let tick = 0;
     const interval = setInterval(() => {
-      completed = Math.min(completed + 1, files.length - 1);
-      bannerText.textContent = `Resolving file names… (${completed}/${files.length})`;
-    }, 300);
+      tick = Math.min(tick+1, files.length-1);
+      bannerText.textContent = `Resolving file names… (${tick}/${files.length})`;
+    }, Math.max(200, (files.length * 400) / files.length));
 
-    // Clear interval when message resolves (we rely on callback above)
-    // The interval will self-clear when banner is hidden
-    setTimeout(() => clearInterval(interval), files.length * 600 + 2000);
+    chrome.runtime.sendMessage({ action:'resolveFilenames', files }, response => {
+      clearInterval(interval);
+      banner.style.display = 'none';
+      resolve(response?.files || files);
+    });
   });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    await chrome.scripting.executeScript({ target:{ tabId: tab.id }, files:['content.js'] }).catch(() => {});
-
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'scan' });
+    const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
+    await chrome.scripting.executeScript({ target:{tabId:tab.id}, files:['content.js'] }).catch(()=>{});
+    const response = await chrome.tabs.sendMessage(tab.id, { action:'scan' });
     allFiles = response?.files || [];
-    allFiles.forEach((_, i) => selectedIds.add(i));
+    allFiles.forEach((_,i) => selectedIds.add(i));
 
     document.getElementById('scanning-state').style.display = 'none';
     document.getElementById('main').style.display = 'block';
@@ -350,7 +321,7 @@ async function init() {
     renderFilterBar();
     renderFileList();
 
-    // Resolve real filenames in background (non-blocking render)
+    // Resolve in background — non-blocking, list updates when done
     resolveFilenames(allFiles).then(resolved => {
       resolvedFiles = resolved;
       renderFileList();
