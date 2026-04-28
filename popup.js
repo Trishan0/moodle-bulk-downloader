@@ -29,6 +29,7 @@ const EXT_STYLE = {
   mp3:  {bg:'#1a2535',color:'#67e8f9'},
   img:  {bg:'#2a1a1a',color:'#fca5a5'},
   file: {bg:'#1e2535',color:'#9ca3af'},
+  hvp:  {bg:'#1f2a1a',color:'#86d97a'},   // H5P interactive — pending resolve
 };
 const badgeStyle = ext => { const s=EXT_STYLE[ext]||EXT_STYLE.file; return `background:${s.bg};color:${s.color}`; };
 
@@ -88,12 +89,13 @@ function renderFileList() {
   list.innerHTML = files.map(f => {
     const idx      = src.indexOf(f);
     const selected = selectedIds.has(idx);
-    const display  = escapeHtml(f.resolvedName || f.name || 'Unnamed');
-    const extLabel = escapeHtml(f.label || f.ext.toUpperCase());
+    const display  = f.resolvedName || f.name || 'Unnamed';
     const dimmed   = !f.resolvedName && resolvedFiles.length === 0 ? 'resolving' : '';
+    const badgeExt = f.hvp && !f.hvpResolved ? 'hvp' : f.ext;
+    const badgeLabel = f.hvp && !f.hvpResolved ? 'H5P…' : (f.label || f.ext.toUpperCase());
     return `<div class="file-item ${selected?'selected':''}" data-idx="${idx}">
       <div class="file-checkbox">${selected?'✓':''}</div>
-      <span class="ext-badge" style="${badgeStyle(f.ext)}">${extLabel}</span>
+      <span class="ext-badge" style="${badgeStyle(badgeExt)}">${badgeLabel}</span>
       <span class="file-name ${dimmed}" title="${display}">${display}</span>
     </div>`;
   }).join('');
@@ -226,7 +228,7 @@ async function runZipDownload(files) {
     showProgress((i/files.length)*80, `Fetching ${i+1}/${files.length}: ${label}…`);
 
     // Ask background to fetch the file (has session cookies)
-    const result = await chrome.runtime.sendMessage({ action:'fetchBytes', url:file.url });
+    const result = await chrome.runtime.sendMessage({ action:'fetchBase64', url:file.url });
 
     if (result.cancelled) {
       showProgress((i/files.length)*80, `⛔ Cancelled.`);
@@ -249,8 +251,11 @@ async function runZipDownload(files) {
       usedNames[fname] = 0;
     }
 
-    // Add Uint8Array directly to the ZIP — no base64 encoding/decoding needed
-    zip.file(fname, new Uint8Array(result.bytes));
+    // Decode base64 → Uint8Array and add to zip
+    const binary = atob(result.base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
+    zip.file(fname, bytes);
   }
 
   showProgress(80, 'Compressing…');
@@ -280,23 +285,31 @@ async function runZipDownload(files) {
   }
 }
 
-// ── Resolve real filenames via background HEAD/GET ────────────────────────────
+// ── Resolve real filenames + H5P video URLs via background ───────────────────
 async function resolveFilenames(files) {
   const banner     = document.getElementById('resolvingBanner');
   const bannerText = document.getElementById('resolvingText');
   banner.style.display = 'flex';
 
+  const hvpCount = files.filter(f => f.hvp).length;
+
   return new Promise(resolve => {
     let tick = 0;
     const interval = setInterval(() => {
-      tick = Math.min(tick+1, files.length-1);
-      bannerText.textContent = `Resolving file names… (${tick}/${files.length})`;
-    }, Math.max(200, Math.floor(3000 / files.length)));
+      tick = Math.min(tick + 1, files.length - 1);
+      const msg = hvpCount > 0
+        ? `Resolving files + ${hvpCount} interactive video${hvpCount > 1 ? 's' : ''}… (${tick}/${files.length})`
+        : `Resolving file names… (${tick}/${files.length})`;
+      bannerText.textContent = msg;
+    }, 400);
 
-    chrome.runtime.sendMessage({ action:'resolveFilenames', files }, response => {
+    chrome.runtime.sendMessage({ action: 'resolveFilenames', files }, response => {
       clearInterval(interval);
       banner.style.display = 'none';
-      resolve(response?.files || files);
+      const resolved = response?.files || files;
+      // Filter out HVP entries that had no video (e.g. quiz/interactive non-video H5P)
+      const filtered = resolved.filter(f => !f.hvpFailed);
+      resolve(filtered);
     });
   });
 }
@@ -306,37 +319,12 @@ async function init() {
   const scanningEl = document.getElementById('scanning-state');
   try {
     const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
-
-    // Validate that the active tab is a regular http/https page.
-    if (!tab.url || !tab.url.startsWith('http')) {
-      scanningEl.innerHTML = `
-        <div class="empty-state" style="padding:28px">
-          <div class="emoji">🚫</div>
-          <p>This page can't be scanned.</p>
-          <small>Navigate to your Moodle course page first.</small>
-        </div>`;
-      return;
-    }
-
-    // Inject content script (idempotent — content.js guards against double-injection).
-    try {
-      await chrome.scripting.executeScript({ target:{ tabId:tab.id }, files:['content.js'] });
-    } catch (e) {
-      // executeScript can fail on protected pages (PDFs, browser-internal pages, etc.)
-      scanningEl.innerHTML = `
-        <div class="empty-state" style="padding:28px">
-          <div class="emoji">⚠️</div>
-          <p>Couldn't inject scanner.</p>
-          <small>Make sure you're on a regular Moodle course page.</small>
-        </div>`;
-      return;
-    }
-
+    await chrome.scripting.executeScript({ target:{tabId:tab.id}, files:['content.js'] }).catch(()=>{});
     const response = await chrome.tabs.sendMessage(tab.id, { action:'scan' });
     allFiles = response?.files || [];
     allFiles.forEach((_,i) => selectedIds.add(i));
 
-    scanningEl.style.display = 'none';
+    document.getElementById('scanning-state').style.display = 'none';
     document.getElementById('main').style.display = 'block';
 
     if (!allFiles.length) {
@@ -360,7 +348,7 @@ async function init() {
     });
 
   } catch(e) {
-    scanningEl.innerHTML = `
+    document.getElementById('scanning-state').innerHTML = `
       <div class="empty-state" style="padding:28px">
         <div class="emoji">⚠️</div>
         <p>Couldn't scan this page.</p>

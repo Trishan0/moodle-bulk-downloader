@@ -1,12 +1,4 @@
-// content.js - Moodle Bulk Downloader v1
-
-// Guard against double-registration when executeScript is called on an already-injected tab.
-// Object.defineProperty makes the flag non-writable and non-configurable so page scripts
-// cannot tamper with it to force re-injection.
-if (!window._moodleBulkDownloaderInjected) {
-Object.defineProperty(window, '_moodleBulkDownloaderInjected', {
-  value: true, writable: false, configurable: false
-});
+// content.js - Moodle Bulk Downloader v5
 
 const ICON_MAP = [
   { keys: ['pdf'],                                                    ext: 'pdf',   cat: 'docs',  label: 'PDF' },
@@ -26,6 +18,7 @@ const MOD_SKIP = [
   '/mod/feedback/', '/mod/chat/', '/mod/choice/', '/mod/survey/',
   '/mod/wiki/', '/mod/glossary/', '/mod/workshop/', '/mod/lesson/',
   '/mod/scorm/', '/mod/lti/'
+  // NOTE: /mod/hvp/ is intentionally NOT here — we handle it specially
 ];
 
 function detectFromStr(str) {
@@ -73,18 +66,14 @@ function shouldSkip(href) {
 }
 
 function resolveTypeForActivity(li, href) {
-  // Try every img on the activity item
   const imgs = li.querySelectorAll('img');
   for (const img of imgs) {
     const t = detectFromStr(img.src) || detectFromStr(img.alt) || detectFromStr(img.className);
     if (t) return t;
   }
-  // Try URL
   const t = detectFromUrl(href);
   if (t) return t;
-  // li class hints
-  const liClass = li.className;
-  if (liClass.includes('resource')) return { ext: 'file', cat: 'docs', label: 'File' };
+  if (li.className.includes('resource')) return { ext: 'file', cat: 'docs', label: 'File' };
   return null;
 }
 
@@ -92,16 +81,33 @@ function scanForFiles() {
   const found = [];
   const seen = new Set();
 
-  // Strategy 1: Moodle li.activity items
+  // Strategy 1: Standard Moodle li.activity items
   document.querySelectorAll('li.activity').forEach(li => {
     const anchor = li.querySelector('a[href]');
     if (!anchor) return;
     const href = anchor.href;
     if (seen.has(href) || shouldSkip(href)) return;
 
+    // ── H5P / interactive video (mod_hvp) ──
+    // These link to /mod/hvp/view.php?id=XXX
+    // We can't know the real video URL yet — mark as 'hvp' pending type
+    // Background will fetch the page and extract the real pluginfile URL
+    if (href.includes('/mod/hvp/view.php')) {
+      seen.add(href);
+      found.push({
+        url: href,
+        name: getLinkLabel(anchor),
+        ext: 'mp4',
+        cat: 'video',
+        label: 'Video',
+        hvp: true,         // flag: needs background resolution
+        resolvedName: null,
+      });
+      return;
+    }
+
     const typeInfo = resolveTypeForActivity(li, href);
     if (!typeInfo) return;
-
     seen.add(href);
     found.push({ url: href, name: getLinkLabel(anchor), ...typeInfo });
   });
@@ -142,5 +148,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
-
-} // end _moodleBulkDownloaderInjected guard
