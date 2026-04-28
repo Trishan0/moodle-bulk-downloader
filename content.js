@@ -1,4 +1,12 @@
-// content.js - Moodle Bulk Downloader v2
+// content.js - Moodle Bulk Downloader v1
+
+// Guard against double-registration when executeScript is called on an already-injected tab.
+// Object.defineProperty makes the flag non-writable and non-configurable so page scripts
+// cannot tamper with it to force re-injection.
+if (!window._moodleBulkDownloaderInjected) {
+Object.defineProperty(window, '_moodleBulkDownloaderInjected', {
+  value: true, writable: false, configurable: false
+});
 
 const ICON_MAP = [
   { keys: ['pdf'],                                                    ext: 'pdf',   cat: 'docs',  label: 'PDF' },
@@ -134,3 +142,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
+
+} // end _moodleBulkDownloaderInjected guard

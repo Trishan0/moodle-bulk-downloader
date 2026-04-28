@@ -44,6 +44,14 @@ function buildFallbackName(f) {
   const ext  = f.ext && f.ext!=='file' && f.ext!=='img' ? '.'+f.ext : '';
   return slug + ext;
 }
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ── Filter bar ────────────────────────────────────────────────────────────────
 function renderFilterBar() {
@@ -80,11 +88,12 @@ function renderFileList() {
   list.innerHTML = files.map(f => {
     const idx      = src.indexOf(f);
     const selected = selectedIds.has(idx);
-    const display  = f.resolvedName || f.name || 'Unnamed';
+    const display  = escapeHtml(f.resolvedName || f.name || 'Unnamed');
+    const extLabel = escapeHtml(f.label || f.ext.toUpperCase());
     const dimmed   = !f.resolvedName && resolvedFiles.length === 0 ? 'resolving' : '';
     return `<div class="file-item ${selected?'selected':''}" data-idx="${idx}">
       <div class="file-checkbox">${selected?'✓':''}</div>
-      <span class="ext-badge" style="${badgeStyle(f.ext)}">${f.label||f.ext.toUpperCase()}</span>
+      <span class="ext-badge" style="${badgeStyle(f.ext)}">${extLabel}</span>
       <span class="file-name ${dimmed}" title="${display}">${display}</span>
     </div>`;
   }).join('');
@@ -282,7 +291,7 @@ async function resolveFilenames(files) {
     const interval = setInterval(() => {
       tick = Math.min(tick+1, files.length-1);
       bannerText.textContent = `Resolving file names… (${tick}/${files.length})`;
-    }, Math.max(200, (files.length * 400) / files.length));
+    }, Math.max(200, Math.floor(3000 / files.length)));
 
     chrome.runtime.sendMessage({ action:'resolveFilenames', files }, response => {
       clearInterval(interval);
@@ -294,14 +303,60 @@ async function resolveFilenames(files) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
+  const scanningEl = document.getElementById('scanning-state');
   try {
     const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
-    await chrome.scripting.executeScript({ target:{tabId:tab.id}, files:['content.js'] }).catch(()=>{});
+
+    // Validate that the active tab is a regular http/https page.
+    let tabOrigin;
+    try {
+      tabOrigin = new URL(tab.url).origin + '/*';
+      if (!tab.url.startsWith('http')) throw new Error('non-http');
+    } catch (_) {
+      scanningEl.innerHTML = `
+        <div class="empty-state" style="padding:28px">
+          <div class="emoji">🚫</div>
+          <p>This page can't be scanned.</p>
+          <small>Navigate to your Moodle course page first.</small>
+        </div>`;
+      return;
+    }
+
+    // Request host permission for the current origin if not already granted.
+    // This is an optional_host_permission — the browser will show a one-time prompt.
+    const hasPermission = await chrome.permissions.contains({ origins: [tabOrigin] });
+    if (!hasPermission) {
+      const granted = await chrome.permissions.request({ origins: [tabOrigin] });
+      if (!granted) {
+        scanningEl.innerHTML = `
+          <div class="empty-state" style="padding:28px">
+            <div class="emoji">🔒</div>
+            <p>Permission required.</p>
+            <small>Click the extension icon again and allow access to this site.</small>
+          </div>`;
+        return;
+      }
+    }
+
+    // Inject content script (idempotent — content.js guards against double-injection).
+    try {
+      await chrome.scripting.executeScript({ target:{ tabId:tab.id }, files:['content.js'] });
+    } catch (e) {
+      // executeScript can fail on protected pages (PDFs, browser-internal pages, etc.)
+      scanningEl.innerHTML = `
+        <div class="empty-state" style="padding:28px">
+          <div class="emoji">⚠️</div>
+          <p>Couldn't inject scanner.</p>
+          <small>Make sure you're on a regular Moodle course page.</small>
+        </div>`;
+      return;
+    }
+
     const response = await chrome.tabs.sendMessage(tab.id, { action:'scan' });
     allFiles = response?.files || [];
     allFiles.forEach((_,i) => selectedIds.add(i));
 
-    document.getElementById('scanning-state').style.display = 'none';
+    scanningEl.style.display = 'none';
     document.getElementById('main').style.display = 'block';
 
     if (!allFiles.length) {
@@ -325,7 +380,7 @@ async function init() {
     });
 
   } catch(e) {
-    document.getElementById('scanning-state').innerHTML = `
+    scanningEl.innerHTML = `
       <div class="empty-state" style="padding:28px">
         <div class="emoji">⚠️</div>
         <p>Couldn't scan this page.</p>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy – Moodle Bulk Downloader</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #222; }
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.1rem; margin-top: 2em; }
+    p, li { font-size: 0.95rem; }
+    a { color: #4f6ef7; }
+  </style>
+</head>
+<body>
+
+<h1>Privacy Policy – Moodle Bulk Downloader</h1>
+<p><strong>Last updated: April 2026</strong></p>
+
+<p>
+  Moodle Bulk Downloader ("the extension") is a browser extension for Microsoft Edge and Google Chrome
+  that lets users download course materials from a Moodle learning-management-system page in bulk.
+  This policy explains what data the extension accesses and how it is handled.
+</p>
+
+<h2>1. Data collected</h2>
+<p>The extension does <strong>not</strong> collect, transmit, or store any personal data on remote servers.
+All processing happens locally inside your browser.</p>
+
+<h2>2. Data accessed locally</h2>
+<ul>
+  <li>
+    <strong>Active tab URL and title</strong> – read once when you open the extension popup, used only to
+    construct a default filename for ZIP downloads and to identify which page to scan.
+  </li>
+  <li>
+    <strong>Page content (DOM)</strong> – a content script reads anchor tags on the active Moodle course page
+    to discover downloadable file links. No page content is sent anywhere.
+  </li>
+  <li>
+    <strong>HTTP response headers</strong> – the extension's background service worker makes HEAD/GET requests
+    to the file URLs found on the page (using your existing Moodle session cookies) to resolve accurate
+    filenames from <code>Content-Disposition</code> headers. These requests go directly to your Moodle server.
+    No data passes through any third-party server.
+  </li>
+  <li>
+    <strong>Downloaded file bytes</strong> – when using ZIP mode the extension fetches file bytes into memory
+    to build the ZIP archive. The bytes are discarded from memory as soon as the ZIP is saved to disk.
+  </li>
+</ul>
+
+<h2>3. Permissions used</h2>
+<ul>
+  <li><strong>activeTab</strong> – to read the URL and inject the page-scanning script into the current tab.</li>
+  <li><strong>scripting</strong> – to programmatically inject the content script only when you open the popup.</li>
+  <li><strong>downloads</strong> – to save files to your browser's default Downloads folder.</li>
+  <li><strong>storage</strong> – to persist a single cancellation flag in <code>chrome.storage.session</code>
+      (cleared when the browser session ends).</li>
+  <li><strong>Host permissions (optional)</strong> – requested once per Moodle domain to allow the background
+      service worker to fetch files with your session credentials. You are prompted by the browser before
+      this permission is granted.</li>
+</ul>
+
+<h2>4. Third-party services</h2>
+<p>
+  The extension bundles <strong>JSZip</strong> (MIT licence) locally. No CDN or external script is loaded
+  at runtime. No analytics, telemetry, or advertising libraries are included.
+</p>
+
+<h2>5. Data sharing</h2>
+<p>
+  No data is shared with the extension developer or any third party. All network requests are made directly
+  between your browser and your institution's Moodle server.
+</p>
+
+<h2>6. Data retention</h2>
+<p>
+  The extension stores nothing beyond the current browser session. Closing the browser clears any
+  session storage used by the extension.
+</p>
+
+<h2>7. Contact</h2>
+<p>
+  For questions about this policy please open an issue on the
+  <a href="https://github.com/Trishan0/moodle-bulk-downloader" target="_blank" rel="noopener">
+    GitHub repository</a>.
+</p>
+
+</body>
+</html>

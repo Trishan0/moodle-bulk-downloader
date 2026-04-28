@@ -1,7 +1,16 @@
-// background.js - Service worker (NO JSZip here — MV3 forbids importScripts after install)
+// background.js - Service worker (MV3 — no importScripts after install)
 
 const activeDownloadIds = new Set();
-let cancelRequested = false;
+
+// cancelRequested is stored in chrome.storage.session so it survives service-worker
+// restarts that can occur between a 'download' message and a later 'cancel' message.
+async function getCancelRequested() {
+  const { cancelRequested = false } = await chrome.storage.session.get('cancelRequested');
+  return cancelRequested;
+}
+function setCancelRequested(value) {
+  return chrome.storage.session.set({ cancelRequested: value });
+}
 
 // ── Filename resolution ───────────────────────────────────────────────────────
 // Strategy: HEAD first (fast), fall back to GET with Range:0-0 (some servers
@@ -97,7 +106,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'download') {
-    cancelRequested = false;
+    setCancelRequested(false);
     chrome.downloads.download({
       url: msg.url,
       filename: msg.filename,
@@ -114,7 +123,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'cancel') {
-    cancelRequested = true;
+    setCancelRequested(true);
     Promise.all(
       [...activeDownloadIds].map(id => new Promise(res => chrome.downloads.cancel(id, res)))
     ).then(() => {
@@ -125,21 +134,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'checkCancel') {
-    sendResponse({ cancelled: cancelRequested });
+    getCancelRequested().then(cancelled => sendResponse({ cancelled }));
     return true;
   }
 
   // Fetch a single file as Uint8Array for ZIP building (called per-file from popup)
   if (msg.action === 'fetchBytes') {
-    if (cancelRequested) { sendResponse({ cancelled: true }); return true; }
-    fetch(msg.url, { credentials: 'include', redirect: 'follow' })
-      .then(async resp => {
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const ab = await resp.arrayBuffer();
-        // Send Uint8Array directly — structured clone handles it with no encoding overhead
-        sendResponse({ bytes: new Uint8Array(ab) });
-      })
-      .catch(e => sendResponse({ error: e.message }));
+    getCancelRequested().then(cancelled => {
+      if (cancelled) { sendResponse({ cancelled: true }); return; }
+      fetch(msg.url, { credentials: 'include', redirect: 'follow' })
+        .then(async resp => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const ab = await resp.arrayBuffer();
+          // Send Uint8Array directly — structured clone handles it with no encoding overhead
+          sendResponse({ bytes: new Uint8Array(ab) });
+        })
+        .catch(e => sendResponse({ error: e.message }));
+    });
     return true;
   }
 });
