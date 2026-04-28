@@ -59,16 +59,28 @@ function escapeHtml(str) {
 // ── Filter bar ────────────────────────────────────────────────────────────────
 function renderFilterBar() {
   const bar = document.getElementById('filterBar');
-  const counts = {all: allFiles.length};
-  allFiles.forEach(f => { counts[f.cat] = (counts[f.cat]||0)+1; });
+  const src = srcFiles(); // uses resolvedFiles once available — correct counts
+
+  const counts = { all: src.length };
+  src.forEach(f => { counts[f.cat] = (counts[f.cat] || 0) + 1; });
+
+  // Only show 'folder' filter before resolution (while placeholders still exist).
+  // After resolution folders are expanded into their real categories — hide it.
+  const resolved = resolvedFiles.length > 0;
+
   bar.innerHTML = CATEGORIES
-    .filter(c => c.id==='all' || counts[c.id])
+    .filter(c => {
+      if (c.id === 'all') return true;
+      if (c.id === 'folder' && resolved) return false; // expanded away
+      return counts[c.id] > 0;
+    })
     .map(c => {
-      const active = activeFilter===c.id ? 'active' : '';
+      const active = activeFilter === c.id ? 'active' : '';
       return `<button class="filter-btn ${active}" data-filter="${c.id}">
-        ${c.icon} ${c.label} <span class="filter-count">${counts[c.id]||0}</span>
+        ${c.icon} ${c.label} <span class="filter-count">${counts[c.id] || 0}</span>
       </button>`;
     }).join('');
+
   bar.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
@@ -352,6 +364,12 @@ async function init() {
     // Resolve in background — non-blocking, list updates when done
     resolveFilenames(allFiles).then(resolved => {
       resolvedFiles = resolved;
+      // Re-select all: folder expansion changes the count so old IDs are stale
+      selectedIds.clear();
+      resolvedFiles.forEach((_, i) => selectedIds.add(i));
+      // If user was filtering on 'folder', reset to 'all' since folders are now expanded
+      if (activeFilter === 'folder') activeFilter = 'all';
+      renderFilterBar();
       renderFileList();
     });
 
