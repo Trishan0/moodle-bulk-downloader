@@ -129,18 +129,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  // Fetch a single file as base64 for ZIP building (called per-file from popup)
-  if (msg.action === 'fetchBase64') {
+  // Fetch a single file as Uint8Array for ZIP building (called per-file from popup)
+  if (msg.action === 'fetchBytes') {
     if (cancelRequested) { sendResponse({ cancelled: true }); return true; }
     fetch(msg.url, { credentials: 'include', redirect: 'follow' })
       .then(async resp => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const ab = await resp.arrayBuffer();
-        // Convert ArrayBuffer → base64
-        const bytes = new Uint8Array(ab);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-        sendResponse({ base64: btoa(binary) });
+        // Send Uint8Array directly — structured clone handles it with no encoding overhead
+        sendResponse({ bytes: new Uint8Array(ab) });
       })
       .catch(e => sendResponse({ error: e.message }));
     return true;

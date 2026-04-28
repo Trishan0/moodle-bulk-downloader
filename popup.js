@@ -217,7 +217,7 @@ async function runZipDownload(files) {
     showProgress((i/files.length)*80, `Fetching ${i+1}/${files.length}: ${label}…`);
 
     // Ask background to fetch the file (has session cookies)
-    const result = await chrome.runtime.sendMessage({ action:'fetchBase64', url:file.url });
+    const result = await chrome.runtime.sendMessage({ action:'fetchBytes', url:file.url });
 
     if (result.cancelled) {
       showProgress((i/files.length)*80, `⛔ Cancelled.`);
@@ -240,11 +240,8 @@ async function runZipDownload(files) {
       usedNames[fname] = 0;
     }
 
-    // Decode base64 → Uint8Array and add to zip
-    const binary = atob(result.base64);
-    const bytes  = new Uint8Array(binary.length);
-    for (let b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
-    zip.file(fname, bytes);
+    // Add Uint8Array directly to the ZIP — no base64 encoding/decoding needed
+    zip.file(fname, new Uint8Array(result.bytes));
   }
 
   showProgress(80, 'Compressing…');
