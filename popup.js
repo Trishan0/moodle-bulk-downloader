@@ -308,11 +308,7 @@ async function init() {
     const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
 
     // Validate that the active tab is a regular http/https page.
-    let tabOrigin;
-    try {
-      tabOrigin = new URL(tab.url).origin + '/*';
-      if (!tab.url.startsWith('http')) throw new Error('non-http');
-    } catch (_) {
+    if (!tab.url || !tab.url.startsWith('http')) {
       scanningEl.innerHTML = `
         <div class="empty-state" style="padding:28px">
           <div class="emoji">🚫</div>
@@ -320,22 +316,6 @@ async function init() {
           <small>Navigate to your Moodle course page first.</small>
         </div>`;
       return;
-    }
-
-    // Request host permission for the current origin if not already granted.
-    // This is an optional_host_permission — the browser will show a one-time prompt.
-    const hasPermission = await chrome.permissions.contains({ origins: [tabOrigin] });
-    if (!hasPermission) {
-      const granted = await chrome.permissions.request({ origins: [tabOrigin] });
-      if (!granted) {
-        scanningEl.innerHTML = `
-          <div class="empty-state" style="padding:28px">
-            <div class="emoji">🔒</div>
-            <p>Permission required.</p>
-            <small>Click the extension icon again and allow access to this site.</small>
-          </div>`;
-        return;
-      }
     }
 
     // Inject content script (idempotent — content.js guards against double-injection).
