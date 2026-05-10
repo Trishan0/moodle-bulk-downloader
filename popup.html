@@ -5,266 +5,371 @@
   <meta charset="UTF-8">
   <title>Moodle Bulk Downloader</title>
   <style>
-    * {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    body {
-      width: 400px;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0f1117;
-      color: #e8eaf0;
-      min-height: 200px;
+    :root {
+      --bg: #0d1117;
+      --bg2: #161c26;
+      --bg3: #1c2333;
+      --border: #222b3a;
+      --border2: #2a3550;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --text3: #4b5a6e;
+      --accent: #3b82f6;
+      --accent-bg: #1e3a5f;
+      --danger: #ef4444;
+      --danger-bg: #3b1515;
+      --success: #22c55e;
+      --success-bg: #0f2a1a;
+      --radius: 7px;
+      --radius-lg: 10px;
     }
 
-    /* ── Header ── */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --bg2: #ffffff;
+        --bg3: #f1f5f9;
+        --border: #e2e8f0;
+        --border2: #cbd5e1;
+        --text: #0f172a;
+        --text2: #475569;
+        --text3: #94a3b8;
+        --accent: #2563eb;
+        --accent-bg: #dbeafe;
+        --danger: #dc2626;
+        --danger-bg: #fee2e2;
+        --success: #16a34a;
+        --success-bg: #dcfce7;
+      }
+    }
+
+    body {
+      width: 420px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* ── HEADER ── */
     .header {
-      background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid #1e2535;
+      padding: 11px 14px 10px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
+      background: var(--bg2);
     }
 
     .header-icon {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
     }
 
-    .header-text h1 {
+    .header-left {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .header-title {
       font-size: 13px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
+      letter-spacing: -.01em;
     }
 
-    .header-text p {
+    .header-sub {
       font-size: 10px;
-      color: #6b7280;
+      color: var(--text3);
       margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* ── Resolving banner ── */
-    #resolvingBanner {
-      display: none;
-      background: #131a30;
-      border-bottom: 1px solid #1e2535;
-      padding: 7px 16px;
-      font-size: 11px;
-      color: #7c8db5;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #resolvingBanner .spinner {
-      width: 12px;
-      height: 12px;
-      border: 2px solid #1e2535;
-      border-top-color: #4f6ef7;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      flex-shrink: 0;
-    }
-
-    /* ── Content ── */
-    .content {
-      padding: 12px 16px;
-    }
-
-    /* ── Filter bar ── */
-    .filter-bar {
+    .header-actions {
       display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
-
-    .filter-btn {
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid #2a2f42;
-      background: transparent;
-      color: #9ca3af;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all .15s;
-      display: flex;
-      align-items: center;
       gap: 4px;
-    }
-
-    .filter-btn:hover {
-      border-color: #4f6ef7;
-      color: #c7d2fe;
-    }
-
-    .filter-btn.active {
-      background: #1e2a5e;
-      border-color: #4f6ef7;
-      color: #a5b4fc;
-    }
-
-    .filter-count {
-      background: #2a3050;
-      color: #6b7baa;
-      border-radius: 10px;
-      padding: 0 5px;
-      font-size: 10px;
-    }
-
-    .filter-btn.active .filter-count {
-      background: #3a4a8e;
-      color: #c7d2fe;
-    }
-
-    /* ── File list ── */
-    .file-list {
-      max-height: 240px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      margin-bottom: 10px;
-    }
-
-    .file-list::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .file-list::-webkit-scrollbar-thumb {
-      background: #2a2f42;
-      border-radius: 4px;
-    }
-
-    .file-item {
-      display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 9px;
-      border-radius: 7px;
-      background: #161b27;
-      border: 1px solid #1e2535;
-      transition: border-color .15s;
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
       cursor: pointer;
-    }
-
-    .file-item:hover {
-      border-color: #2a3555;
-    }
-
-    .file-item.selected {
-      border-color: #4f6ef7;
-      background: #131a35;
-    }
-
-    .file-checkbox {
-      width: 15px;
-      height: 15px;
-      border: 1.5px solid #374151;
-      border-radius: 4px;
-      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
-      font-weight: 700;
-      color: transparent;
+      font-size: 14px;
       transition: all .15s;
-    }
-
-    .file-item.selected .file-checkbox {
-      background: #4f6ef7;
-      border-color: #4f6ef7;
-      color: white;
-    }
-
-    .ext-badge {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 2px 5px;
-      border-radius: 4px;
       flex-shrink: 0;
-      text-transform: uppercase;
-      letter-spacing: .05em;
     }
 
-    .file-name {
-      font-size: 11px;
-      color: #d1d5db;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .icon-btn:hover {
+      background: var(--bg3);
+      color: var(--text);
+      border-color: var(--border2);
+    }
+
+    .icon-btn.active {
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
       flex: 1;
+      padding: 8px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .15s;
+      letter-spacing: .02em;
     }
 
-    .file-name.resolving {
-      color: #4b5563;
-      font-style: italic;
+    .tab-btn:hover {
+      color: var(--text2);
     }
 
-    .file-name.resolved {
-      color: #d1d5db;
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
-    /* ── Empty / scanning ── */
+    .tab-badge {
+      display: inline-block;
+      background: var(--bg3);
+      border-radius: 10px;
+      padding: 0 5px;
+      font-size: 10px;
+      margin-left: 3px;
+      color: var(--text3);
+    }
+
+    .tab-btn.active .tab-badge {
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+
+    /* ── RESOLVING BANNER ── */
+    #resolvingBanner {
+      display: none;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--text2);
+      align-items: center;
+      gap: 7px;
+    }
+
+    #resolvingBanner .spinner {
+      width: 11px;
+      height: 11px;
+      border: 1.5px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* ── SCANNING / EMPTY ── */
+    .scanning {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 8px;
+      color: var(--text3);
+      font-size: 12px;
+    }
+
     .empty-state {
       text-align: center;
-      padding: 28px 20px;
-      color: #4b5563;
+      padding: 36px 20px;
+      color: var(--text3);
     }
 
     .empty-state .emoji {
-      font-size: 28px;
+      font-size: 26px;
       margin-bottom: 8px;
     }
 
     .empty-state p {
       font-size: 12px;
-      line-height: 1.5;
+      color: var(--text2);
     }
 
     .empty-state small {
-      font-size: 10px;
-      color: #374151;
+      font-size: 11px;
+      color: var(--text3);
       margin-top: 5px;
       display: block;
     }
 
-    .scanning {
+    /* ── MAIN PANEL ── */
+    #panel-files {
+      display: none;
+    }
+
+    #panel-history {
+      display: none;
+    }
+
+    .content {
+      padding: 10px 12px 0;
+    }
+
+    /* ── SEARCH BAR ── */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text3);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 6px 28px 6px 28px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    #searchInput::placeholder {
+      color: var(--text3);
+    }
+
+    #searchInput:focus {
+      border-color: var(--accent);
+    }
+
+    #searchClear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+      display: none;
+    }
+
+    #searchClear:hover {
+      color: var(--text2);
+    }
+
+    /* ── FILTER + SORT ROW ── */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 28px;
-      gap: 8px;
-      color: #6b7280;
-      font-size: 12px;
+      gap: 3px;
+      white-space: nowrap;
     }
 
-    .spinner {
-      width: 14px;
-      height: 14px;
-      border: 2px solid #1e2535;
-      border-top-color: #4f6ef7;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
+    .filter-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
     }
 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+    .filter-btn.active {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
-    /* ── Download mode toggle ── */
+    .filter-count {
+      font-size: 10px;
+      opacity: .75;
+    }
+
+    .sort-select {
+      padding: 3px 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--radius);
+      font-size: 11px;
+      cursor: pointer;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .sort-select:hover {
+      border-color: var(--border2);
+    }
+
+    /* ── MODE TOGGLE ── */
     .mode-toggle {
       display: flex;
-      gap: 0;
-      margin-bottom: 10px;
-      border: 1px solid #2a2f42;
-      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       overflow: hidden;
+      margin-bottom: 8px;
     }
 
     .mode-btn {
@@ -276,63 +381,196 @@
       font-weight: 600;
       transition: all .15s;
       background: transparent;
-      color: #6b7280;
+      color: var(--text3);
     }
 
     .mode-btn:first-child {
-      border-right: 1px solid #2a2f42;
+      border-right: 1px solid var(--border);
     }
 
     .mode-btn.active {
-      background: #1e2a5e;
-      color: #a5b4fc;
+      background: var(--accent-bg);
+      color: var(--accent);
     }
 
     .mode-btn:hover:not(.active) {
-      background: #161b27;
-      color: #9ca3af;
+      background: var(--bg3);
+      color: var(--text2);
     }
 
-    /* ── Progress area ── */
+    /* ── FILE LIST ── */
+    .file-list {
+      max-height: 230px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 8px;
+    }
+
+    .file-list::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .file-list::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 4px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border-radius: var(--radius);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color .12s, background .12s;
+      outline: none;
+    }
+
+    .file-item:hover {
+      border-color: var(--border2);
+      background: var(--bg3);
+    }
+
+    .file-item.selected {
+      border-color: var(--accent);
+      background: var(--accent-bg);
+    }
+
+    .file-item.done {
+      opacity: .5;
+    }
+
+    .file-item.error {
+      border-color: var(--danger);
+    }
+
+    .file-item:focus-visible {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .file-check {
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid var(--border2);
+      border-radius: 4px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: transparent;
+      transition: all .12s;
+    }
+
+    .file-item.selected .file-check {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .ext-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-name {
+      font-size: 11px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+
+    .file-name.resolving {
+      color: var(--text3);
+      font-style: italic;
+    }
+
+    .file-meta {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-size {
+      font-size: 10px;
+      color: var(--text3);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .file-status {
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    /* ── PROGRESS ── */
     #progressArea {
+      padding: 0 12px 8px;
       display: none;
-      padding: 0 16px 10px;
     }
 
-    .progress-bar-wrap {
+    .progress-track {
       height: 3px;
-      background: #1e2535;
+      background: var(--bg3);
       border-radius: 2px;
       overflow: hidden;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
 
-    .progress-bar-fill {
+    .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #4f6ef7, #7c3aed);
+      background: var(--accent);
       border-radius: 2px;
-      transition: width .3s;
+      transition: width .25s;
       width: 0%;
     }
 
     #statusMsg {
       font-size: 11px;
-      color: #6b7280;
+      color: var(--text2);
     }
 
-    /* ── Footer ── */
+    /* ── FOOTER ── */
     .footer {
-      border-top: 1px solid #1e2535;
-      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      padding: 8px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      background: var(--bg2);
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .select-all {
       font-size: 11px;
-      color: #6b7280;
+      color: var(--text3);
       cursor: pointer;
       user-select: none;
       transition: color .15s;
@@ -340,116 +578,381 @@
     }
 
     .select-all:hover {
-      color: #a5b4fc;
+      color: var(--accent);
     }
 
-    .count-label {
+    .count-info {
       font-size: 11px;
-      color: #4b5563;
+      color: var(--text3);
       white-space: nowrap;
+    }
+
+    .count-size {
+      font-size: 10px;
+      color: var(--text3);
     }
 
     .btn-group {
       display: flex;
-      gap: 6px;
+      gap: 5px;
       align-items: center;
     }
 
     .download-btn {
-      padding: 7px 16px;
-      background: #0f47ad;
-      color: white;
+      padding: 7px 14px;
+      background: var(--accent);
+      color: #fff;
       border: none;
-      border-radius: 7px;
+      border-radius: var(--radius);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity .15s, transform .1s;
+      transition: opacity .15s;
       white-space: nowrap;
     }
 
     .download-btn:hover:not(:disabled) {
-      opacity: .9;
-      transform: translateY(-1px);
+      opacity: .88;
     }
 
     .download-btn:disabled {
-      opacity: .4;
+      opacity: .35;
       cursor: not-allowed;
-      transform: none;
     }
 
     .cancel-btn {
-      padding: 7px 12px;
+      padding: 7px 10px;
       background: transparent;
-      color: #ef4444;
-      border: 1px solid #3b1515;
-      border-radius: 7px;
+      color: var(--danger);
+      border: 1px solid var(--danger-bg);
+      border-radius: var(--radius);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all .15s;
       display: none;
       white-space: nowrap;
+      transition: background .15s;
     }
 
     .cancel-btn:hover {
+      background: var(--danger-bg);
+    }
+
+    /* ── HISTORY PANEL ── */
+    #panel-history .content {
+      padding: 10px 12px;
+    }
+
+    .history-empty {
+      text-align: center;
+      padding: 30px;
+      color: var(--text3);
+      font-size: 12px;
+    }
+
+    .history-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 9px 11px;
+      margin-bottom: 6px;
+      background: var(--bg2);
+    }
+
+    .history-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .history-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-date {
+      font-size: 10px;
+      color: var(--text3);
+      flex-shrink: 0;
+    }
+
+    .history-meta {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .history-badges {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+
+    .hbadge {
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 20px;
+    }
+
+    .hbadge-ok {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .hbadge-err {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .history-clear {
+      font-size: 11px;
+      color: var(--text3);
+      cursor: pointer;
+      text-align: right;
+      margin-bottom: 8px;
+      display: block;
+      transition: color .15s;
+    }
+
+    .history-clear:hover {
+      color: var(--danger);
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── BADGE COLOURS ── */
+    .badge-pdf {
       background: #3b1515;
+      color: #f87171;
+    }
+
+    .badge-docx {
+      background: #132240;
+      color: #60a5fa;
+    }
+
+    .badge-pptx {
+      background: #2d1a0e;
+      color: #fb923c;
+    }
+
+    .badge-xlsx {
+      background: #0f2a1e;
+      color: #34d399;
+    }
+
+    .badge-txt {
+      background: #1a2e1a;
+      color: #86efac;
+    }
+
+    .badge-zip {
+      background: #2a1f3a;
+      color: #c084fc;
+    }
+
+    .badge-mp4 {
+      background: #1f1a3a;
+      color: #a78bfa;
+    }
+
+    .badge-mp3 {
+      background: #1a2535;
+      color: #67e8f9;
+    }
+
+    .badge-img {
+      background: #2a1a1a;
+      color: #fca5a5;
+    }
+
+    .badge-file {
+      background: #1e2535;
+      color: #9ca3af;
+    }
+
+    .badge-hvp {
+      background: #1f2a1a;
+      color: #86d97a;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .badge-pdf {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .badge-docx {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .badge-pptx {
+        background: #fff7ed;
+        color: #c2410c;
+      }
+
+      .badge-xlsx {
+        background: #dcfce7;
+        color: #15803d;
+      }
+
+      .badge-txt {
+        background: #f0fdf4;
+        color: #166534;
+      }
+
+      .badge-zip {
+        background: #f5f3ff;
+        color: #7c3aed;
+      }
+
+      .badge-mp4 {
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+
+      .badge-mp3 {
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+
+      .badge-img {
+        background: #fef2f2;
+        color: #991b1b;
+      }
+
+      .badge-file {
+        background: #f1f5f9;
+        color: #475569;
+      }
+
+      .badge-hvp {
+        background: #f0fdf4;
+        color: #15803d;
+      }
     }
   </style>
 </head>
 
 <body>
 
+  <!-- HEADER -->
   <div class="header">
-    <img class="header-icon" src="icons/icon128.png">
-    <div class="header-text">
-      <h1>Moodle Bulk Downloader</h1>
-      <p>Download all course materials at once</p>
+    <img class="header-icon" src="icons/icon128.png" alt="">
+    <div class="header-left">
+      <div class="header-title">Moodle Bulk Downloader</div>
+      <div class="header-sub" id="headerSub">Scanning page…</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnRescan" title="Re-scan page (clears cache)" aria-label="Re-scan">🔄</button>
+      <button class="icon-btn" id="btnHistory" title="Download history" aria-label="History">🕘</button>
+      <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙️</button>
     </div>
   </div>
 
-  <div id="resolvingBanner">
-    <div class="spinner"></div>
-    <span id="resolvingText">Resolving file names…</span>
+  <!-- TABS -->
+  <div class="tabs" id="mainTabs" style="display:none">
+    <button class="tab-btn active" data-tab="files" id="tabFiles">
+      Files <span class="tab-badge" id="tabFilesBadge">0</span>
+    </button>
+    <button class="tab-btn" data-tab="history" id="tabHistory">History</button>
   </div>
 
-  <div id="scanning-state" class="scanning">
-    <div class="spinner"></div>
-    Scanning page…
+  <!-- SCANNING STATE -->
+  <div id="scanningState" class="scanning">
+    <div class="spinner"></div> Scanning page…
   </div>
 
-  <div id="main" style="display:none">
+  <!-- FILES PANEL -->
+  <div id="panel-files">
+    <div id="resolvingBanner">
+      <div class="spinner"></div>
+      <span id="resolvingText">Resolving file names…</span>
+    </div>
+
     <div class="content">
-      <!-- Category filters -->
-      <div class="filter-bar" id="filterBar"></div>
+      <!-- Search -->
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search files…" aria-label="Search files">
+        <button id="searchClear" aria-label="Clear search">✕</button>
+      </div>
 
-      <!-- Download mode toggle -->
+      <!-- Filter + sort -->
+      <div class="filter-row">
+        <div class="filter-bar" id="filterBar"></div>
+        <select class="sort-select" id="sortSelect" aria-label="Sort files">
+          <option value="default">Default</option>
+          <option value="name-asc">Name A→Z</option>
+          <option value="name-desc">Name Z→A</option>
+          <option value="type">By type</option>
+          <option value="size-desc">Largest first</option>
+          <option value="size-asc">Smallest first</option>
+          <option value="section">By section</option>
+        </select>
+      </div>
+
+      <!-- Mode toggle -->
       <div class="mode-toggle">
         <button class="mode-btn active" id="modeIndividual">⬇ Individual files</button>
         <button class="mode-btn" id="modeZip">🗜 Download as ZIP</button>
       </div>
 
       <!-- File list -->
-      <div class="file-list" id="fileList"></div>
+      <div class="file-list" id="fileList" role="list"></div>
     </div>
 
     <!-- Progress -->
     <div id="progressArea">
-      <div class="progress-bar-wrap">
-        <div class="progress-bar-fill" id="progressFill"></div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
       </div>
       <div id="statusMsg"></div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <span class="select-all" id="selectAll">Select all</span>
-      <span class="count-label" id="countLabel"></span>
+      <div class="footer-left">
+        <span class="select-all" id="selectAll" tabindex="0" role="button">Select all</span>
+        <div>
+          <div class="count-info" id="countLabel"></div>
+          <div class="count-size" id="sizeLabel"></div>
+        </div>
+      </div>
       <div class="btn-group">
         <button class="cancel-btn" id="cancelBtn">✕ Cancel</button>
         <button class="download-btn" id="downloadBtn" disabled>⬇ Download</button>
       </div>
+    </div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div id="panel-history" style="display:none">
+    <div class="content">
+      <span class="history-clear" id="clearHistory">Clear all history</span>
+      <div id="historyList"></div>
     </div>
   </div>
 
