@@ -1,4 +1,4 @@
-// content.js - Moodle Bulk Downloader v5
+// content.js - Moodle Bulk Downloader v2.0
 
 const ICON_MAP = [
   { keys: ['pdf'],                                                    ext: 'pdf',   cat: 'docs',  label: 'PDF' },
@@ -18,7 +18,6 @@ const MOD_SKIP = [
   '/mod/feedback/', '/mod/chat/', '/mod/choice/', '/mod/survey/',
   '/mod/wiki/', '/mod/glossary/', '/mod/workshop/', '/mod/lesson/',
   '/mod/scorm/', '/mod/lti/'
-  // NOTE: /mod/hvp/ is intentionally NOT here — we handle it specially
 ];
 
 function detectFromStr(str) {
@@ -58,6 +57,21 @@ function getLinkLabel(anchor) {
   return anchor.textContent.trim().replace(/\s+/g, ' ') || 'Unnamed';
 }
 
+// Extract the Moodle section/topic name for a given list item
+function getSectionName(li) {
+  // Walk up to find the section container, then find its heading
+  let el = li;
+  for (let i = 0; i < 8; i++) {
+    el = el.parentElement;
+    if (!el) break;
+    const heading = el.querySelector('h3.sectionname, h3.section-title, .sectionname, .section_title, [data-region="section-header"] h3');
+    if (heading) {
+      return heading.textContent.trim().replace(/\s+/g, ' ') || null;
+    }
+  }
+  return null;
+}
+
 function shouldSkip(href) {
   if (!href || href.startsWith('javascript:') || href.startsWith('mailto:')) return true;
   if (href.includes('course/mod.php') || href.includes('action=')) return true;
@@ -88,9 +102,8 @@ function scanForFiles() {
     const href = anchor.href;
     if (seen.has(href) || shouldSkip(href)) return;
 
-    // ── Folder (mod_folder) ──
-    // Links to /mod/folder/view.php?id=XXX — contains multiple files inside
-    // Background will fetch the folder page and expand the files
+    const sectionName = getSectionName(li);
+
     if (href.includes('/mod/folder/view.php')) {
       seen.add(href);
       found.push({
@@ -98,16 +111,13 @@ function scanForFiles() {
         name: getLinkLabel(anchor),
         ext: 'folder',
         cat: 'folder',
-        label: '📁',
-        folder: true,    // flag: needs background expansion
+        label: 'Folder',
+        folder: true,
+        sectionName,
       });
       return;
     }
 
-    // ── H5P / interactive video (mod_hvp) ──
-    // These link to /mod/hvp/view.php?id=XXX
-    // We can't know the real video URL yet — mark as 'hvp' pending type
-    // Background will fetch the page and extract the real pluginfile URL
     if (href.includes('/mod/hvp/view.php')) {
       seen.add(href);
       found.push({
@@ -116,7 +126,8 @@ function scanForFiles() {
         ext: 'mp4',
         cat: 'video',
         label: 'Video',
-        hvp: true,         // flag: needs background resolution
+        hvp: true,
+        sectionName,
         resolvedName: null,
       });
       return;
@@ -125,7 +136,7 @@ function scanForFiles() {
     const typeInfo = resolveTypeForActivity(li, href);
     if (!typeInfo) return;
     seen.add(href);
-    found.push({ url: href, name: getLinkLabel(anchor), ...typeInfo });
+    found.push({ url: href, name: getLinkLabel(anchor), sectionName, ...typeInfo });
   });
 
   // Strategy 2: pluginfile.php direct links
@@ -135,8 +146,9 @@ function scanForFiles() {
     const typeInfo = detectFromUrl(href)
       || detectFromStr((anchor.querySelector('img') || {}).src)
       || { ext: 'file', cat: 'docs', label: 'File' };
+    const li = anchor.closest('li.activity');
     seen.add(href);
-    found.push({ url: href, name: getLinkLabel(anchor), ...typeInfo });
+    found.push({ url: href, name: getLinkLabel(anchor), sectionName: li ? getSectionName(li) : null, ...typeInfo });
   });
 
   // Strategy 3: remaining /mod/resource/ links
@@ -151,8 +163,9 @@ function scanForFiles() {
       if (typeInfo) break;
     }
     typeInfo = typeInfo || { ext: 'file', cat: 'docs', label: 'File' };
+    const li = anchor.closest('li.activity');
     seen.add(href);
-    found.push({ url: href, name: getLinkLabel(anchor), ...typeInfo });
+    found.push({ url: href, name: getLinkLabel(anchor), sectionName: li ? getSectionName(li) : null, ...typeInfo });
   });
 
   return found;
