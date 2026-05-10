@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Moodle Bulk Downloader — Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f8fafc; --bg2: #ffffff; --bg3: #f1f5f9;
+      --border: #e2e8f0; --border2: #cbd5e1;
+      --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+      --accent: #2563eb; --accent-bg: #dbeafe;
+      --success: #16a34a; --success-bg: #dcfce7;
+      --radius: 8px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117; --bg2: #161c26; --bg3: #1c2333;
+        --border: #222b3a; --border2: #2a3550;
+        --text: #e2e8f0; --text2: #94a3b8; --text3: #4b5a6e;
+        --accent: #3b82f6; --accent-bg: #1e3a5f;
+        --success: #22c55e; --success-bg: #0f2a1a;
+      }
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; padding: 32px 24px;
+      max-width: 560px; margin: 0 auto;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: var(--text3); margin-bottom: 28px; }
+    .section {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 16px; overflow: hidden;
+    }
+    .section-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 700; color: var(--text2);
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+    .field { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .field:last-child { border-bottom: none; }
+    .field-label { font-size: 13px; font-weight: 500; color: var(--text); }
+    .field-desc  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    select, input[type="number"] {
+      padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 12px;
+      outline: none; min-width: 120px; flex-shrink: 0;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+    .toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0; background: var(--border2);
+      border-radius: 11px; cursor: pointer; transition: background .2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      background: white; border-radius: 50%; transition: transform .2s; pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+    .save-btn {
+      margin-top: 8px; padding: 10px 24px; background: var(--accent); color: white;
+      border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .save-btn:hover { opacity: .88; }
+    #savedMsg { font-size: 12px; color: var(--success); margin-left: 10px; opacity: 0; transition: opacity .3s; }
+    #savedMsg.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>⚙️ Settings</h1>
+  <p class="subtitle">Moodle Bulk Downloader preferences</p>
+
+  <div class="section">
+    <div class="section-header">Download</div>
+    <div class="field">
+      <div><div class="field-label">Default mode</div><div class="field-desc">How files are downloaded by default</div></div>
+      <select id="defaultMode">
+        <option value="individual">Individual files</option>
+        <option value="zip">ZIP archive</option>
+      </select>
+    </div>
+    <div class="field">
+      <div><div class="field-label">Concurrent requests</div><div class="field-desc">Simultaneous file resolutions (1–10)</div></div>
+      <input type="number" id="concurrency" min="1" max="10" value="5" style="width:70px">
+    </div>
+    <div class="field">
+      <div><div class="field-label">ZIP subfolders</div><div class="field-desc">Organise ZIP by file type (Docs/, Videos/…)</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="zipSubfolders" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="field">
+      <div><div class="field-label">Skip duplicates</div><div class="field-desc">Don't re-download files already in folder</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="skipDuplicates">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Display</div>
+    <div class="field">
+      <div><div class="field-label">Default sort order</div><div class="field-desc">How files are sorted when first loaded</div></div>
+      <select id="defaultSort">
+        <option value="default">Page order</option>
+        <option value="name-asc">Name A→Z</option>
+        <option value="type">By type</option>
+        <option value="section">By section</option>
+      </select>
+    </div>
+    <div class="field">
+      <div><div class="field-label">Show file sizes</div><div class="field-desc">Fetch and display file sizes during scan</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="showSizes" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Notifications</div>
+    <div class="field">
+      <div><div class="field-label">Completion notification</div><div class="field-desc">System notification when batch download finishes</div></div>
+      <label class="toggle">
+        <input type="checkbox" id="notifyOnComplete" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+  <button class="save-btn" id="saveBtn">Save settings</button>
+  <span id="savedMsg">✓ Saved</span>
+
+  <script>
+    const DEFAULTS = {
+      defaultMode: 'individual',
+      concurrency: 5,
+      zipSubfolders: true,
+      skipDuplicates: false,
+      defaultSort: 'default',
+      showSizes: true,
+      notifyOnComplete: true,
+    };
+
+    // Load settings
+    chrome.storage.sync.get(DEFAULTS, prefs => {
+      document.getElementById('defaultMode').value   = prefs.defaultMode;
+      document.getElementById('concurrency').value   = prefs.concurrency;
+      document.getElementById('zipSubfolders').checked = prefs.zipSubfolders;
+      document.getElementById('skipDuplicates').checked = prefs.skipDuplicates;
+      document.getElementById('defaultSort').value   = prefs.defaultSort;
+      document.getElementById('showSizes').checked   = prefs.showSizes;
+      document.getElementById('notifyOnComplete').checked = prefs.notifyOnComplete;
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const prefs = {
+        defaultMode:       document.getElementById('defaultMode').value,
+        concurrency:       parseInt(document.getElementById('concurrency').value, 10) || 5,
+        zipSubfolders:     document.getElementById('zipSubfolders').checked,
+        skipDuplicates:    document.getElementById('skipDuplicates').checked,
+        defaultSort:       document.getElementById('defaultSort').value,
+        showSizes:         document.getElementById('showSizes').checked,
+        notifyOnComplete:  document.getElementById('notifyOnComplete').checked,
+      };
+      chrome.storage.sync.set(prefs, () => {
+        const msg = document.getElementById('savedMsg');
+        msg.classList.add('show');
+        setTimeout(() => msg.classList.remove('show'), 2000);
+      });
+    });
+  </script>
+</body>
+</html>
